@@ -1,14 +1,7 @@
+import { useRef } from "react";
 import boardBg from "../assets/trv_board_bg.svg";
 import {
   PORTRAIT,
-  NAME_POS,
-  TITLE_POS,
-  SPECIAL_ABILITY_NAME_POS,
-  SPECIAL_ABILITY_DESC_POS,
-  SLOT_DICE_POS,
-  SLOT_NAME_POS,
-  SLOT_DESC_POS,
-  COMMAND_TOKENS_POS,
   BACK_APP_TITLE_POS,
   BACK_HEADSHOT,
   BACK_VERSION_POS,
@@ -16,6 +9,15 @@ import {
   BACK_CONTACT_POS,
   BACK_AUTHOR_DESC_POS,
 } from "../utils/boardLayout";
+import {
+  FIELD_REGISTRY,
+  getFieldValue,
+  resolveFieldStyle,
+  defaultBoxWidth,
+} from "../utils/fieldRegistry";
+import { fitText, clearMeasureCache } from "../../shared/utils/textFit";
+import { useFontsReady } from "../../shared/hooks/useFontsReady";
+import { TRV_FONT_SPECS } from "../../shared/utils/fontReady";
 
 // Simple word-wrap: split text into lines fitting roughly maxChars per line
 function wrapText(text, maxChars = 28) {
@@ -49,37 +51,118 @@ const STAR_POINTS = (() => {
   return pts.join(" ");
 })();
 
-// Dice value text — Compacta BT bold italic
-function DiceValue({ pos, value, color = "green" }) {
-  if (!value) return null;
-  if (value === "\u2605" || value === "★") {
-    return (
-      <polygon
-        points={STAR_POINTS}
-        transform={`translate(${pos.x}, ${pos.y - 12})`}
-        fill={color}
-      />
-    );
-  }
+// Group transform composing manual move/rotate with the field's baked scaleX.
+// With no override (dx=dy=rotation=0, scaleX=1) this is the identity, so the
+// default board renders exactly as before.
+function fieldGroupTransform(field, { dx, dy, rotation }) {
+  const { x, y } = field.anchor;
+  return `translate(${dx} ${dy}) rotate(${rotation} ${x} ${y}) translate(${x} ${y}) scale(${field.scaleX} 1) translate(${-x} ${-y})`;
+}
+
+// Convert a field's guide box + anchor into the usable fit box {w,h}: measured
+// from the text anchor toward the box edges, and (for upward-growing display
+// fields) into an optional gap above the guide.
+function usableBox(field) {
+  const g = field.fitBox;
+  const a = field.anchor;
+  const gBottom = g.y + g.h;
+  // Width (shared with the edge-handle drag so both agree on the baseline).
+  const w = defaultBoxWidth(field);
+  // Single-line fields are placed by their fixed baseline, so only width binds
+  // (their design size already sat in the box). Multi-line blocks are bounded
+  // by height in their growth direction: upward for bottom-anchored, down for top.
+  const singleLine = (field.maxLines ?? (field.multiline ? 40 : 1)) <= 1;
+  let h;
+  if (singleLine) h = Infinity;
+  else if (field.anchorV === "bottom") h = a.y - g.y + (field.gapBonus || 0);
+  else h = gBottom - a.y;
+  return { w, h };
+}
+
+// Measured auto-fit for a field. A manual font-size override pins the size
+// (min == max), so the text lays out at exactly that size and may overflow —
+// the user's explicit choice — while unset fields shrink to fit their box.
+function fitField(field, value, style, override) {
+  const manual = override && override.fontSize != null;
+  const base = style.fontSize;
+  const ub = usableBox(field);
+  // A manual width override (from the edge handles) replaces the field's default
+  // box width, re-wrapping the text within it.
+  const box =
+    override && override.w != null ? { w: override.w, h: ub.h } : ub;
+  return fitText(value, {
+    box,
+    font: {
+      family: style.fontFamily,
+      weight: style.fontWeight,
+      style: style.fontStyle,
+      letterSpacing: field.letterSpacing || 0,
+    },
+    maxFontSize: base,
+    minFontSize: manual ? base : Math.max(6, base * 0.4),
+    scaleX: field.scaleX,
+    lineHeightRatio: field.lineHeightRatio ?? 1.0,
+    maxLines: field.maxLines ?? (field.multiline ? 40 : 1),
+  });
+}
+
+// A registry-driven text field with measured auto-fit. anchorV "bottom" keeps
+// the last line's baseline at the anchor and grows earlier lines upward.
+function FieldText({ field, value, style, override }) {
+  const { x, y, textAnchor } = field.anchor;
+  const { fill, fontFamily, fontWeight, fontStyle, letterSpacing } = style;
+  const { lines, fontSize, lineHeight } = fitField(field, value, style, override);
+  const yOffset =
+    field.anchorV === "bottom" ? -(lines.length - 1) * lineHeight : 0;
   return (
-    <text
-      x={pos.x}
-      y={pos.y}
-      textAnchor="middle"
-      style={{
-        fontFamily: "'Compacta BT', 'Compacta', sans-serif",
-        fontWeight: 700,
-        fontSize: "30px",
-        fontStyle: "normal",
-        fill: color,
-      }}
-    >
-      {value}
-    </text>
+    <g data-field-id={field.id} transform={fieldGroupTransform(field, style)}>
+      <text
+        x={x}
+        y={y + yOffset}
+        textAnchor={textAnchor}
+        style={{ fontFamily, fontWeight, fontStyle, fontSize, fill, letterSpacing }}
+      >
+        {lines.map((line, i) => (
+          <tspan key={i} x={x} dy={i === 0 ? 0 : lineHeight}>
+            {line}
+          </tspan>
+        ))}
+      </text>
+    </g>
   );
 }
 
-// Multi-line text block — Acumin Variable Concept
+// Dice value — a filled star polygon for command tokens, otherwise shrink-to-fit text.
+function DiceField({ field, value, style, override }) {
+  const { x, y } = field.anchor;
+  const { fill, fontFamily, fontWeight, fontStyle } = style;
+  if (value === "★") {
+    return (
+      <g data-field-id={field.id} transform={fieldGroupTransform(field, style)}>
+        <polygon
+          points={STAR_POINTS}
+          transform={`translate(${x}, ${y - 12})`}
+          fill={fill}
+        />
+      </g>
+    );
+  }
+  const { fontSize } = fitField(field, value, style, override);
+  return (
+    <g data-field-id={field.id} transform={fieldGroupTransform(field, style)}>
+      <text
+        x={x}
+        y={y}
+        textAnchor="middle"
+        style={{ fontFamily, fontWeight, fontStyle, fontSize, fill }}
+      >
+        {value}
+      </text>
+    </g>
+  );
+}
+
+// Multi-line text block — Acumin Variable Concept (back-of-board metadata only)
 function TextBlock({
   x,
   y,
@@ -114,9 +197,18 @@ function TextBlock({
 }
 
 export default function CrewLeaderBoard({ leader }) {
-  const slots = leader.slots || [];
   const accent = leader.accentColor || "#00ff00";
   const nameClr = leader.nameColor || "#fff6d3";
+  const fieldStyles = leader.fieldStyles || {};
+
+  // Re-fit once real fonts load: drop fallback-metric measurements so the fits
+  // below (which run during render) use correct glyph advances.
+  const fontsReady = useFontsReady(TRV_FONT_SPECS);
+  const clearedRef = useRef(false);
+  if (fontsReady && !clearedRef.current) {
+    clearMeasureCache();
+    clearedRef.current = true;
+  }
 
   return (
     <svg
@@ -129,7 +221,6 @@ export default function CrewLeaderBoard({ leader }) {
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* LEFT SIDE = FRONT (game face — all editable content)     */}
-      {/* x ≈ 0–519                                                */}
       {/* ══════════════════════════════════════════════════════════ */}
 
       {/* Portrait */}
@@ -170,124 +261,40 @@ export default function CrewLeaderBoard({ leader }) {
         />
       )}
 
-      {/* Special ability name */}
-      {leader.specialAbilityName && (
-        <text
-          x={SPECIAL_ABILITY_NAME_POS.x}
-          y={SPECIAL_ABILITY_NAME_POS.y}
-          textAnchor={SPECIAL_ABILITY_NAME_POS.anchor}
-          style={{
-            fontFamily: "'Compacta TRV', sans-serif",
-            fontWeight: 400,
-            fontSize: "26px",
-            fontStyle: "italic",
-            fill: "#fff6d3",
-          }}
-        >
-          {leader.specialAbilityName}
-        </text>
-      )}
-
-      {/* Special ability description */}
-      <TextBlock
-        x={SPECIAL_ABILITY_DESC_POS.x}
-        y={SPECIAL_ABILITY_DESC_POS.y}
-        text={leader.specialAbilityDescription}
-        maxChars={22}
-        anchor="start"
-      />
-
-      {/* Crew leader name — large Compacta TRV text */}
-      <text
-        x={NAME_POS.x}
-        y={NAME_POS.y}
-        textAnchor={NAME_POS.anchor}
-        transform={`translate(${NAME_POS.x} ${NAME_POS.y}) scale(1.45 1) translate(${-NAME_POS.x} ${-NAME_POS.y})`}
-        style={{
-          fontFamily: "'Compacta TRV', sans-serif",
-          fontWeight: 400,
-          fontSize: "74px",
-          fontStyle: "italic",
-          letterSpacing: "-2px",
-          fill: nameClr,
-        }}
-      >
-        {leader.crewLeaderName}
-      </text>
-
-      {/* Crew leader nickname / catchphrase */}
-      {leader.crewLeaderTitle && (
-        <text
-          x={TITLE_POS.x}
-          y={TITLE_POS.y}
-          textAnchor={TITLE_POS.anchor}
-          style={{
-            fontFamily: "'Compacta BT', 'Compacta', sans-serif",
-            fontWeight: 700,
-            fontStyle: "italic",
-            fontSize: "17px",
-            fill: accent,
-          }}
-        >
-          {leader.crewLeaderTitle}
-        </text>
-      )}
-
-      {/* ── 2×2 Effect Slot Grid ── */}
-      {slots.map((slot, i) => (
-        <g key={i}>
-          {/* Dice value */}
-          <DiceValue pos={SLOT_DICE_POS[i]} value={slot.dice} color={accent} />
-
-          {/* Effect name */}
-          {slot.effectName && (
-            <text
-              x={SLOT_NAME_POS[i].x}
-              y={SLOT_NAME_POS[i].y}
-              textAnchor={SLOT_NAME_POS[i].anchor}
-              transform={`translate(${SLOT_NAME_POS[i].x} ${SLOT_NAME_POS[i].y}) scale(0.8 1) translate(${-SLOT_NAME_POS[i].x} ${-SLOT_NAME_POS[i].y})`}
-              style={{
-                fontFamily: "'Compacta TRV', sans-serif",
-                fontWeight: 400,
-                fontStyle: "italic",
-                fontSize: "26px",
-                fill: "#fff6d3",
-              }}
-            >
-              {slot.effectName}
-            </text>
-          )}
-
-          {/* Description */}
-          <TextBlock
-            x={SLOT_DESC_POS[i].x}
-            y={SLOT_DESC_POS[i].y}
-            text={slot.description}
-            maxChars={Math.round((SLOT_DESC_POS[i].w || 100) / 4)}
+      {/* Front editable fields — registry-driven, per-field style overrides */}
+      {FIELD_REGISTRY.map((field) => {
+        const value = getFieldValue(leader, field);
+        if (field.kind === "number") {
+          if (!(Number(value) > 0)) return null;
+        } else if (!value) {
+          return null;
+        }
+        const override = fieldStyles[field.id];
+        const style = resolveFieldStyle(field, override, {
+          accent,
+          name: nameClr,
+        });
+        return field.kind === "dice" ? (
+          <DiceField
+            key={field.id}
+            field={field}
+            value={String(value)}
+            style={style}
+            override={override}
           />
-        </g>
-      ))}
-
-      {/* Command token count */}
-      {leader.commandTokens > 0 && (
-        <text
-          x={COMMAND_TOKENS_POS.x}
-          y={COMMAND_TOKENS_POS.y}
-          textAnchor="middle"
-          style={{
-            fontFamily: "'Compacta BT', 'Compacta', sans-serif",
-            fontWeight: 700,
-            fontStyle: "italic",
-            fontSize: "18px",
-            fill: "#fff6d3",
-          }}
-        >
-          {leader.commandTokens}
-        </text>
-      )}
+        ) : (
+          <FieldText
+            key={field.id}
+            field={field}
+            value={String(value)}
+            style={style}
+            override={override}
+          />
+        );
+      })}
 
       {/* ══════════════════════════════════════════════════════════ */}
-      {/* OFF-SCREEN = BACK METADATA (x > 1039)                   */}
+      {/* BACK METADATA (RIGHT side of board)                      */}
       {/* ══════════════════════════════════════════════════════════ */}
 
       {/* App title */}

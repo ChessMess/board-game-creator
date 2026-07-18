@@ -63,6 +63,7 @@ export function useExport({ hero, showAlert, showStatus }) {
     boardW: 1213,
     boardH: 808,
     filenameFallback: "hero",
+    fontSetKey: "rtdt",
     showStatus,
   });
 

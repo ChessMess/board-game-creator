@@ -1,4 +1,5 @@
 import { defaultCrewLeader } from "../data/defaultCrewLeader";
+import { FIELD_IDS } from "./fieldRegistry";
 
 const STORAGE_KEY = "trv-crew-leader-v2";
 const DB_NAME = "trv-leader-recents";
@@ -52,6 +53,41 @@ export function sanitizeString(str) {
   return s;
 }
 
+const FIELD_ID_SET = new Set(FIELD_IDS);
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+const clampNum = (v, min, max) =>
+  typeof v === "number" && Number.isFinite(v)
+    ? Math.max(min, Math.min(max, v))
+    : undefined;
+
+// Strict allowlist for per-field overrides: only known field ids, only known
+// keys, all values range/type-coerced. Anything else is dropped.
+export function sanitizeFieldStyles(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const id of Object.keys(raw)) {
+    if (!FIELD_ID_SET.has(id)) continue;
+    const s = raw[id];
+    if (!s || typeof s !== "object") continue;
+    const clean = {};
+    const dx = clampNum(s.dx, -2000, 2000);
+    const dy = clampNum(s.dy, -2000, 2000);
+    const rotation = clampNum(s.rotation, -360, 360);
+    const fontSize = clampNum(s.fontSize, 1, 400);
+    const w = clampNum(s.w, 4, 2000);
+    if (dx !== undefined) clean.dx = dx;
+    if (dy !== undefined) clean.dy = dy;
+    if (rotation !== undefined) clean.rotation = rotation;
+    if (fontSize !== undefined) clean.fontSize = fontSize;
+    if (w !== undefined) clean.w = w;
+    if (typeof s.color === "string" && HEX_RE.test(s.color)) clean.color = s.color;
+    if (typeof s.italic === "boolean") clean.italic = s.italic;
+    if (typeof s.bold === "boolean") clean.bold = s.bold;
+    if (Object.keys(clean).length > 0) out[id] = clean;
+  }
+  return out;
+}
+
 export function validateLeaderData(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return { valid: false, error: "Invalid data: expected a JSON object." };
@@ -79,7 +115,7 @@ export function validateLeaderData(data) {
         : defaultCrewLeader.specialAbilityName,
     specialAbilityDescription:
       typeof data.specialAbilityDescription === "string"
-        ? sanitizeString(data.specialAbilityDescription).slice(0, 200)
+        ? sanitizeString(data.specialAbilityDescription).slice(0, 300)
         : defaultCrewLeader.specialAbilityDescription,
     commandTokens:
       typeof data.commandTokens === "number"
@@ -93,6 +129,7 @@ export function validateLeaderData(data) {
       typeof data.nameColor === "string" && /^#[0-9a-f]{6}$/i.test(data.nameColor)
         ? data.nameColor
         : defaultCrewLeader.nameColor,
+    fieldStyles: sanitizeFieldStyles(data.fieldStyles),
     author_name:
       typeof data.author_name === "string"
         ? sanitizeString(data.author_name).slice(0, 40)
@@ -107,7 +144,7 @@ export function validateLeaderData(data) {
         : defaultCrewLeader.contact_info,
     author_description:
       typeof data.author_description === "string"
-        ? sanitizeString(data.author_description).slice(0, 200)
+        ? sanitizeString(data.author_description).slice(0, 300)
         : defaultCrewLeader.author_description,
   };
 

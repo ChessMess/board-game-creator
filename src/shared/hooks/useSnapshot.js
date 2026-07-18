@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { svgElementToPngBlob } from "../utils/svgRaster";
+import { getEmbeddedFontCSS } from "../utils/embeddedFonts";
 
 // Increase for higher-res clipboard/download output (e.g. 3 = 3×, 1 = native)
 const SNAPSHOT_SCALE = 2;
@@ -13,71 +15,20 @@ const sanitizeFilename = (name, fallback = "subject") => {
   return sanitized || fallback;
 };
 
-const rasterizeSvgImage = (imgEl) =>
-  new Promise((resolve, reject) => {
-    const href =
-      imgEl.getAttribute("href") ||
-      imgEl.getAttributeNS("http://www.w3.org/1999/xlink", "href");
-    if (!href || href.startsWith("data:")) {
-      resolve(null);
-      return;
-    }
-    const w = parseFloat(imgEl.getAttribute("width")) || 100;
-    const h = parseFloat(imgEl.getAttribute("height")) || 100;
-    const scale = 3;
-    const canvas = document.createElement("canvas");
-    canvas.width = w * scale;
-    canvas.height = h * scale;
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = () => reject(new Error(`Failed to rasterize: ${href}`));
-    img.src = href;
-  });
-
-const renderBoardPngBlob = async ({ svgSelector, boardW, boardH }) => {
+const renderBoardPngBlob = async ({ svgSelector, boardW, boardH, fontSetKey }) => {
   const svgEl = document.querySelector(svgSelector);
   if (!svgEl) throw new Error(`No SVG element found at "${svgSelector}"`);
 
-  const clone = svgEl.cloneNode(true);
-  const images = clone.querySelectorAll("image");
-  for (const imgEl of images) {
-    const href = imgEl.getAttribute("href") || "";
-    if (href && !href.startsWith("data:")) {
-      try {
-        const dataUrl = await rasterizeSvgImage(imgEl);
-        if (dataUrl) imgEl.setAttribute("href", dataUrl);
-      } catch (e) {
-        console.warn("Could not rasterize image for snapshot:", e);
-      }
-    }
-  }
+  // Embed fonts so text renders in the real board fonts, not fallbacks — an
+  // SVG loaded through <img> is an isolated document the page's @font-face
+  // rules do not reach.
+  const fontCSS = fontSetKey ? await getEmbeddedFontCSS(fontSetKey) : "";
 
-  const svgString = new XMLSerializer().serializeToString(clone);
-  const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = boardW * SNAPSHOT_SCALE;
-  canvas.height = boardH * SNAPSHOT_SCALE;
-  const ctx = canvas.getContext("2d");
-
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, boardW * SNAPSHOT_SCALE, boardH * SNAPSHOT_SCALE);
-      URL.revokeObjectURL(url);
-      canvas.toBlob(resolve, "image/png");
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Could not render board"));
-    };
-    img.src = url;
+  return svgElementToPngBlob(svgEl, {
+    width: boardW,
+    height: boardH,
+    scale: SNAPSHOT_SCALE,
+    fontCSS,
   });
 };
 
@@ -101,9 +52,15 @@ const captureSnapshot = async (
     boardH,
     download = false,
     filenameFallback = "subject",
+    fontSetKey,
   } = {},
 ) => {
-  const pngBlob = await renderBoardPngBlob({ svgSelector, boardW, boardH });
+  const pngBlob = await renderBoardPngBlob({
+    svgSelector,
+    boardW,
+    boardH,
+    fontSetKey,
+  });
   const filename = `${sanitizeFilename(name, filenameFallback)}.png`;
   let copied = false;
   try {
@@ -122,6 +79,7 @@ export function useSnapshot({
   boardW,
   boardH,
   filenameFallback = "subject",
+  fontSetKey,
   showStatus,
 }) {
   const [snapshotFlash, setSnapshotFlash] = useState(false);
@@ -168,6 +126,7 @@ export function useSnapshot({
       boardH,
       download: wasEligible,
       filenameFallback,
+      fontSetKey,
     })
       .then(({ copied }) => {
         setSnapshotFlash(true);
@@ -189,7 +148,7 @@ export function useSnapshot({
       .finally(() => {
         holdBusyRef.current = false;
       });
-  }, [cancelHold, svgSelector, boardW, boardH, filenameFallback]);
+  }, [cancelHold, svgSelector, boardW, boardH, filenameFallback, fontSetKey]);
 
   useEffect(() => {
     window.addEventListener("blur", cancelHold);
