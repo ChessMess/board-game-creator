@@ -1,9 +1,9 @@
-// Board layout constants for trv_board_bg.svg (1039.3707 × 789.92139)
+// Board layout constants for trv_board_bg.svg (viewBox 1027.3709 × 789.92139)
 //
-// All positions from user-placed Inkscape guide rectangles.
-// LEFT (x: 0–519) = front game face (all editable content)
-// RIGHT (x: 519–1039) = secondary side (mask/die-line)
-// OFF-SCREEN (x > 1039) = back metadata
+// All positions from user-placed Inkscape guide rectangles (see the
+// `position-guides` layer in the SVG, display:none, for the authoritative boxes).
+// LEFT  (x: 0–519)    = front game face (all editable content)
+// RIGHT (x: 519–1027) = back-of-board metadata (author / version / contact)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FRONT BOARD (LEFT side, x=0–519)
@@ -58,7 +58,7 @@ export const SLOT_DESC_POS = [
 export const COMMAND_TOKENS_POS = { x: 216, y: 743 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BACK METADATA (OFF-SCREEN, x > 1039)
+// BACK METADATA (RIGHT side of board, x ≈ 668–965)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // guide-back-app-title: x=706.6, y=94.3, w=218.7, h=30.1

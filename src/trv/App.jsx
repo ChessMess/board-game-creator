@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import jsPDF from "jspdf";
 import { svgToCanvas } from "./utils/svgToPdfCanvas";
+import { ensureFontsLoaded, TRV_FONT_SPECS } from "../shared/utils/fontReady";
+import { warmBoardAssets } from "../shared/utils/svgRaster";
+import { getEmbeddedFontCSS } from "../shared/utils/embeddedFonts";
 import CrewLeaderBoard from "./components/CrewLeaderBoard";
 import CrewLeaderForm from "./components/CrewLeaderForm";
+import FieldHandles from "./components/FieldHandles";
+import { useFieldEditor } from "./hooks/useFieldEditor";
 import RecentLeaderRow from "./components/RecentLeaderRow";
 import GalleryModal from "./components/GalleryModal";
 import AdminPanel from "./components/AdminPanel";
@@ -36,8 +41,15 @@ const sanitizeFilename = (name) => {
 
 export default function TrvApp() {
   const leaderState = useLeaderState();
-  const { leader, updateLeader, updateSlot, isModifiedFromDefault } =
-    leaderState;
+  const {
+    leader,
+    updateLeader,
+    updateSlot,
+    updateFieldStyle,
+    resetFieldStyle,
+    clearAllFieldStyles,
+    isModifiedFromDefault,
+  } = leaderState;
   const {
     confirmState,
     confirm,
@@ -61,6 +73,12 @@ export default function TrvApp() {
   const BOARD_W = 1027.3709;
   const BOARD_H = 789.92139;
   const ASPECT = BOARD_W / BOARD_H;
+
+  const editor = useFieldEditor({
+    svgSelector: "#trv-board-container svg",
+    leader,
+    updateFieldStyle,
+  });
 
   const showStatus = (text, type = "success") => {
     setStatusMsg({ text, type });
@@ -99,12 +117,26 @@ export default function TrvApp() {
     boardW: BOARD_W,
     boardH: BOARD_H,
     filenameFallback: "crew-leader",
+    fontSetKey: "trv",
     showStatus,
   });
 
   useEffect(() => {
     localStorage.setItem("trv-sidebarOpen", sidebarOpen);
   }, [sidebarOpen]);
+
+  // Warm export assets at mount so the first PDF/snapshot is a cache hit rather
+  // than a cold multi-MB decode on the click path (fixes Safari first-export).
+  useEffect(() => {
+    getEmbeddedFontCSS("trv");
+    ensureFontsLoaded(TRV_FONT_SPECS);
+    warmBoardAssets({
+      svgSelector: "#trv-board-container svg",
+      width: BOARD_W,
+      height: BOARD_H,
+      scale: 3,
+    });
+  }, []);
 
   useEffect(() => {
     const el = boardAreaRef.current;
@@ -164,6 +196,9 @@ export default function TrvApp() {
       const svgEl = document.querySelector("#trv-board-container svg");
       if (!svgEl) throw new Error("Board SVG not found");
 
+      // Block on fonts so measurement/rasterization uses real glyph metrics.
+      await ensureFontsLoaded(TRV_FONT_SPECS);
+
       const pdfCanvas = await svgToCanvas(svgEl, BOARD_W, BOARD_H, 3);
 
       const doc = new jsPDF({
@@ -208,6 +243,9 @@ export default function TrvApp() {
             leader={leader}
             updateLeader={updateLeader}
             updateSlot={updateSlot}
+            updateFieldStyle={updateFieldStyle}
+            resetFieldStyle={resetFieldStyle}
+            clearAllFieldStyles={clearAllFieldStyles}
           />
         </div>
 
@@ -323,15 +361,26 @@ export default function TrvApp() {
           <div
             id="trv-board-container"
             className="shadow-2xl"
+            onPointerDown={editor.onBoardPointerDown}
             style={{
               width: boardSize.width * zoom,
               height: boardSize.height * zoom,
+              touchAction: "none",
+              cursor: "pointer",
             }}
           >
             <CrewLeaderBoard leader={leader} />
           </div>
         </div>
       </main>
+
+      <FieldHandles
+        selectedId={editor.selectedId}
+        leader={leader}
+        zoom={zoom}
+        svgSelector="#trv-board-container svg"
+        editor={editor}
+      />
 
       {galleryOpen && (
         <GalleryModal

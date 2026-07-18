@@ -182,20 +182,21 @@ The back of the board contains metadata about the creator/designer, positioned o
 ```js
 export const defaultCrewLeader = {
   schemaVersion: 2,
-  crewLeaderName: "CREW LEADER", // 30 char max
+  crewLeaderName: "", // 30 char max
   crewLeaderTitle: "", // 40 char max
   portraitDataUrl: null, // base64 data URL (JPEG/PNG/WebP)
 
   // Special ability (top of front board, unique per leader)
   specialAbilityName: "", // 30 char max
-  specialAbilityDescription: "", // 200 char max
+  specialAbilityDescription: "", // 300 char max
 
   // 4 positional effect slots — stored 0-indexed, sorted by dice value (lowest → slot 0)
+  // NOTE: there is NO `subtitle` field. dice may be "6", "1-3", "ANY", or "★".
   slots: [
-    { effectName: "AIRSTRIKE", dice: "ANY", subtitle: "", description: "" }, // Slot 0
-    { effectName: "NITRO", dice: "1-3", subtitle: "", description: "" }, // Slot 1
-    { effectName: "DRIFT", dice: "3-5", subtitle: "", description: "" }, // Slot 2
-    { effectName: "REPAIR", dice: "6", subtitle: "", description: "" }, // Slot 3
+    { effectName: "", dice: "", description: "" }, // Slot 0
+    { effectName: "", dice: "", description: "" }, // Slot 1
+    { effectName: "", dice: "", description: "" }, // Slot 2
+    { effectName: "", dice: "", description: "" }, // Slot 3
   ],
 
   // Command token count (0-9, single digit)
@@ -209,9 +210,13 @@ export const defaultCrewLeader = {
   author_name: "", // 40 char max
   revision_no: "", // 20 char max
   contact_info: "", // 60 char max
-  author_description: "", // 200 char max
+  author_description: "", // 300 char max
 };
 ```
+
+> **★ command-token dice:** the star is a **dice value** (`slot.dice === "★"`), set via the
+> ★ toggle next to the Dice Value field. It is not an Effect Name option. The board renders
+> it as a filled star polygon (`CrewLeaderBoard.jsx`).
 
 ---
 
@@ -221,7 +226,7 @@ export const defaultCrewLeader = {
 | ------------------- | ----------------------- | ------ | ------ | ------------------- | ------------- |
 | Crew Leader Name    | Compacta TRV            | 400    | italic | 74px (scaleX: 1.45) | `#fff6d3`     |
 | Title/Descriptor    | Compacta BT             | 700    | italic | 17px                | `accentColor` |
-| Dice values         | Compacta BT             | 700    | italic | 23px                | `accentColor` |
+| Dice values         | Compacta BT             | 700    | normal | 30px                | `accentColor` |
 | Effect name         | Compacta TRV            | 400    | italic | 26px (scaleX: 0.8)  | `#fff6d3`     |
 | Effect description  | Acumin Variable Concept | 400    | normal | 9px                 | `#fff6d3`     |
 | Command token count | Compacta BT             | 700    | italic | 18px                | `#fff6d3`     |

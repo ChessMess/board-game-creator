@@ -1,5 +1,6 @@
 import { useState } from "react";
 import CollapsibleSection from "../../shared/components/CollapsibleSection";
+import { getField, resolveFieldStyle } from "../utils/fieldRegistry";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -54,48 +55,110 @@ function TextArea({
   );
 }
 
-const EFFECT_OPTIONS = ["REPAIR", "NITRO", "DRIFT", "AIRSTRIKE", "\u2605"];
+// Compact per-field style controls: color, bold, italic, size, reset.
+// Values shown are the effective style (registry default unless overridden).
+function FieldStyleStrip({ fieldId, override = {}, accent, nameColor, onChange, onReset }) {
+  const field = getField(fieldId);
+  if (!field) return null;
+  const def = resolveFieldStyle(field, {}, { accent, name: nameColor });
+  const effColor = override.color ?? def.fill ?? "#ffffff";
+  const effSize = Math.round(override.fontSize ?? field.font.size);
+  const effItalic = override.italic ?? field.font.style === "italic";
+  const effBold = override.bold ?? field.font.weight >= 700;
+  const hasOverride = Object.keys(override).length > 0;
+  const tgl = (active) =>
+    "h-6 w-6 shrink-0 rounded border text-xs leading-none transition-colors " +
+    (active
+      ? "bg-amber-600 border-amber-500 text-white"
+      : "bg-gray-700 border-gray-600 text-gray-400 hover:text-amber-400");
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <input
+        type="color"
+        value={effColor}
+        onChange={(e) => onChange(fieldId, { color: e.target.value })}
+        title="Text color"
+        className="h-6 w-6 shrink-0 rounded border border-gray-600 bg-gray-700 cursor-pointer p-0"
+      />
+      <button
+        type="button"
+        aria-pressed={effBold}
+        title="Bold"
+        onClick={() => onChange(fieldId, { bold: !effBold })}
+        className={tgl(effBold) + " font-bold"}
+      >
+        B
+      </button>
+      <button
+        type="button"
+        aria-pressed={effItalic}
+        title="Italic"
+        onClick={() => onChange(fieldId, { italic: !effItalic })}
+        className={tgl(effItalic) + " italic"}
+      >
+        I
+      </button>
+      <input
+        type="number"
+        min={6}
+        max={200}
+        value={effSize}
+        title="Font size (px)"
+        onChange={(e) => {
+          const v = parseFloat(e.target.value);
+          onChange(fieldId, { fontSize: Number.isFinite(v) ? v : undefined });
+        }}
+        className="h-6 w-14 rounded bg-gray-700 border border-gray-600 px-1 text-gray-100 text-xs focus:outline-none focus:border-amber-500"
+      />
+      <span className="text-[10px] text-gray-500">px</span>
+      {hasOverride && (
+        <button
+          type="button"
+          title="Reset this field's styling"
+          onClick={() => onReset(fieldId)}
+          className="ml-auto h-6 px-1.5 rounded border border-gray-600 text-gray-400 hover:text-amber-400 text-xs"
+        >
+          Reset
+        </button>
+      )}
+    </div>
+  );
+}
 
-function SlotSection({ index, slot, updateSlot }) {
+const EFFECT_OPTIONS = ["REPAIR", "NITRO", "DRIFT", "AIRSTRIKE"];
+
+function SlotSection({ index, slot, updateSlot, styleStrip }) {
   return (
     <div className="space-y-2 pt-2 border-t border-gray-700 first:border-t-0 first:pt-0">
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
         Slot {index + 1}
       </p>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block">
-          <span className={labelClass}>Effect Name</span>
-          <select
-            className={inputClass}
-            value={
-              EFFECT_OPTIONS.includes(slot.effectName)
-                ? slot.effectName
-                : "__custom__"
+
+      <label className="block">
+        <span className={labelClass}>Effect Name</span>
+        <select
+          className={inputClass}
+          value={
+            EFFECT_OPTIONS.includes(slot.effectName)
+              ? slot.effectName
+              : "__custom__"
+          }
+          onChange={(e) => {
+            if (e.target.value === "__custom__") {
+              updateSlot("effectName", "");
+            } else {
+              updateSlot("effectName", e.target.value);
             }
-            onChange={(e) => {
-              if (e.target.value === "__custom__") {
-                updateSlot("effectName", "");
-              } else {
-                updateSlot("effectName", e.target.value);
-              }
-            }}
-          >
-            {EFFECT_OPTIONS.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-            <option value="__custom__">Custom...</option>
-          </select>
-        </label>
-        <Field
-          label="Dice Value"
-          value={slot.dice}
-          onChange={(v) => updateSlot("dice", v)}
-          placeholder="ANY"
-          maxLength={5}
-        />
-      </div>
+          }}
+        >
+          {EFFECT_OPTIONS.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+          <option value="__custom__">Custom...</option>
+        </select>
+      </label>
       {!EFFECT_OPTIONS.includes(slot.effectName) && (
         <Field
           label="Custom Effect Name"
@@ -105,6 +168,38 @@ function SlotSection({ index, slot, updateSlot }) {
           maxLength={20}
         />
       )}
+      {styleStrip(`effect${index}`)}
+
+      <label className="block">
+        <span className={labelClass}>Dice Value</span>
+        <div className="mt-1 flex gap-1">
+          <input
+            type="text"
+            className="min-w-0 flex-1 rounded bg-gray-700 border border-gray-600 px-2 py-1.5 text-gray-100 text-xs focus:outline-none focus:border-amber-500 disabled:opacity-50"
+            value={slot.dice === "★" ? "" : slot.dice}
+            onChange={(e) => updateSlot("dice", e.target.value)}
+            placeholder="ANY"
+            maxLength={5}
+            disabled={slot.dice === "★"}
+          />
+          <button
+            type="button"
+            onClick={() => updateSlot("dice", slot.dice === "★" ? "" : "★")}
+            aria-pressed={slot.dice === "★"}
+            title="Command token (★)"
+            className={
+              "shrink-0 w-8 rounded border text-sm transition-colors " +
+              (slot.dice === "★"
+                ? "bg-amber-600 border-amber-500 text-white"
+                : "bg-gray-700 border-gray-600 text-gray-400 hover:text-amber-400 hover:border-amber-500")
+            }
+          >
+            ★
+          </button>
+        </div>
+      </label>
+      {styleStrip(`dice${index}`)}
+
       <TextArea
         label="Description"
         value={slot.description}
@@ -113,11 +208,19 @@ function SlotSection({ index, slot, updateSlot }) {
         maxLength={200}
         rows={2}
       />
+      {styleStrip(`desc${index}`)}
     </div>
   );
 }
 
-export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
+export default function CrewLeaderForm({
+  leader,
+  updateLeader,
+  updateSlot,
+  updateFieldStyle,
+  resetFieldStyle,
+  clearAllFieldStyles,
+}) {
   const [openSections, setOpenSections] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("trv-sections"));
@@ -148,9 +251,34 @@ export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
   };
 
   const slots = leader.slots || [];
+  const accent = leader.accentColor || "#00ff00";
+  const nameColor = leader.nameColor || "#fff6d3";
+  const fieldStyles = leader.fieldStyles || {};
+  const overrideCount = Object.keys(fieldStyles).length;
+
+  const styleStrip = (fieldId) => (
+    <FieldStyleStrip
+      fieldId={fieldId}
+      override={fieldStyles[fieldId] || {}}
+      accent={accent}
+      nameColor={nameColor}
+      onChange={updateFieldStyle}
+      onReset={resetFieldStyle}
+    />
+  );
 
   return (
     <div className="space-y-5">
+      {overrideCount > 0 && (
+        <button
+          type="button"
+          onClick={clearAllFieldStyles}
+          className="w-full rounded border border-gray-600 bg-gray-800 hover:border-amber-500 hover:text-amber-400 text-gray-300 text-[11px] py-1.5 uppercase tracking-wider transition-colors"
+        >
+          Clear all manual styling ({overrideCount})
+        </button>
+      )}
+
       {/* ── Crew Leader Identity ── */}
       <CollapsibleSection
         title="Crew Leader"
@@ -158,20 +286,26 @@ export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
         onToggle={() => toggle("identity")}
       >
         <div className="space-y-3">
-          <Field
-            label="Name"
-            value={leader.crewLeaderName}
-            onChange={(v) => updateLeader("crewLeaderName", v)}
-            placeholder="CREW LEADER"
-            maxLength={30}
-          />
-          <Field
-            label="Nickname / Catchphrase"
-            value={leader.crewLeaderTitle}
-            onChange={(v) => updateLeader("crewLeaderTitle", v)}
-            placeholder="e.g. THE STREET SERGEANT"
-            maxLength={40}
-          />
+          <div>
+            <Field
+              label="Name"
+              value={leader.crewLeaderName}
+              onChange={(v) => updateLeader("crewLeaderName", v)}
+              placeholder="CREW LEADER"
+              maxLength={30}
+            />
+            {styleStrip("name")}
+          </div>
+          <div>
+            <Field
+              label="Nickname / Catchphrase"
+              value={leader.crewLeaderTitle}
+              onChange={(v) => updateLeader("crewLeaderTitle", v)}
+              placeholder="e.g. THE STREET SERGEANT"
+              maxLength={40}
+            />
+            {styleStrip("title")}
+          </div>
 
           {/* Portrait upload */}
           <div>
@@ -214,21 +348,29 @@ export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
         onToggle={() => toggle("special")}
       >
         <div className="space-y-3">
-          <Field
-            label="Ability Name"
-            value={leader.specialAbilityName}
-            onChange={(v) => updateLeader("specialAbilityName", v)}
-            placeholder="e.g. JURY RIGGING"
-            maxLength={30}
-          />
-          <TextArea
-            label="Ability Description"
-            value={leader.specialAbilityDescription}
-            onChange={(v) => updateLeader("specialAbilityDescription", v)}
-            placeholder="Rules text for special ability..."
-            maxLength={300}
-            rows={4}
-          />
+          <div>
+            <Field
+              label="Ability Name"
+              value={leader.specialAbilityName}
+              onChange={(v) => updateLeader("specialAbilityName", v)}
+              placeholder="e.g. JURY RIGGING"
+              maxLength={30}
+            />
+            {styleStrip("abilityName")}
+          </div>
+          <div>
+            <TextArea
+              label="Ability Description"
+              value={leader.specialAbilityDescription}
+              onChange={(v) =>
+                updateLeader("specialAbilityDescription", v)
+              }
+              placeholder="Rules text for special ability..."
+              maxLength={300}
+              rows={4}
+            />
+            {styleStrip("abilityDesc")}
+          </div>
         </div>
       </CollapsibleSection>
 
@@ -252,6 +394,7 @@ export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
               index={i}
               slot={slot}
               updateSlot={(field, value) => updateSlot(i, field, value)}
+              styleStrip={styleStrip}
             />
           ))}
 
@@ -273,6 +416,7 @@ export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
                 }
               />
             </label>
+            {leader.commandTokens > 0 && styleStrip("commandTokens")}
           </div>
         </div>
       </CollapsibleSection>
@@ -298,7 +442,7 @@ export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
               </span>
             </div>
             <p className="mt-1 text-[10px] text-gray-500">
-              Applied to dice values and title.
+              Default for dice values and title (per-field color overrides win).
             </p>
           </label>
           <label className="block">
@@ -315,7 +459,7 @@ export default function CrewLeaderForm({ leader, updateLeader, updateSlot }) {
               </span>
             </div>
             <p className="mt-1 text-[10px] text-gray-500">
-              Applied to the crew leader name.
+              Default for the crew leader name (per-field color overrides win).
             </p>
           </label>
         </div>
