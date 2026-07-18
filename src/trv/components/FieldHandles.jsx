@@ -44,31 +44,24 @@ export default function FieldHandles({
         const p = new DOMPoint(x, y).matrixTransform(ctm);
         return { x: p.x, y: p.y };
       };
-      // The selection box spans the CONTAINER, not just the ink: for wrapping
-      // fields its width is the fit-box width (from w) — so the orange outline
-      // and corner handles always match the blue width nubs and widen together
-      // — and for single-line fields it's the text bbox. Height is the text
-      // block's own extent. One coherent box carries every handle. Local edge
-      // offsets undo the field's anamorphic horizontal scaleX.
+      // The selection box spans the CONTAINER (the fit-box width, from w) for
+      // every field — so the orange outline and corner handles always match the
+      // blue width nubs and widen together. Height is the text block's own
+      // extent. One coherent box carries every handle. Local edge offsets undo
+      // the field's anamorphic horizontal scaleX.
       const a = field.anchor;
       const scaleX = field.scaleX || 1;
-      const wrapping = (field.maxLines ?? (field.multiline ? 40 : 1)) > 1;
+      const w = leader.fieldStyles?.[selectedId]?.w ?? defaultBoxWidth(field);
       let leftLocal, rightLocal;
-      if (wrapping) {
-        const w = leader.fieldStyles?.[selectedId]?.w ?? defaultBoxWidth(field);
-        if (a.textAnchor === "start") {
-          leftLocal = a.x;
-          rightLocal = a.x + w / scaleX;
-        } else if (a.textAnchor === "end") {
-          leftLocal = a.x - w / scaleX;
-          rightLocal = a.x;
-        } else {
-          leftLocal = a.x - w / (2 * scaleX);
-          rightLocal = a.x + w / (2 * scaleX);
-        }
+      if (a.textAnchor === "start") {
+        leftLocal = a.x;
+        rightLocal = a.x + w / scaleX;
+      } else if (a.textAnchor === "end") {
+        leftLocal = a.x - w / scaleX;
+        rightLocal = a.x;
       } else {
-        leftLocal = bbox.x;
-        rightLocal = bbox.x + bbox.width;
+        leftLocal = a.x - w / (2 * scaleX);
+        rightLocal = a.x + w / (2 * scaleX);
       }
       const topLocal = bbox.y;
       const botLocal = bbox.y + bbox.height;
@@ -89,9 +82,9 @@ export default function FieldHandles({
       // and an end box's right edge are fixed by the layout, so no nub there.
       const midY = (topLocal + botLocal) / 2;
       const leftNub =
-        wrapping && a.textAnchor !== "start" ? project(leftLocal, midY) : null;
+        a.textAnchor !== "start" ? project(leftLocal, midY) : null;
       const rightNub =
-        wrapping && a.textAnchor !== "end" ? project(rightLocal, midY) : null;
+        a.textAnchor !== "end" ? project(rightLocal, midY) : null;
 
       setGeom({ nw, ne, se, sw, topMid, rot, leftNub, rightNub });
     };

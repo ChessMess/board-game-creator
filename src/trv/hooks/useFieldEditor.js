@@ -1,10 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getField, defaultBoxWidth } from "../utils/fieldRegistry";
 
-// Whether a field wraps — only wrapping fields carry a width nub / fit-box.
-const isWrapping = (field) =>
-  (field.maxLines ?? (field.multiline ? 40 : 1)) > 1;
-
 // Rotation snaps to this increment (Shift bypasses to free rotation).
 const SNAP_DEG = 20;
 
@@ -78,17 +74,15 @@ export function useFieldEditor({ svgSelector, leader, updateFieldStyle }) {
       const baseSize = el
         ? parseFloat(getComputedStyle(el).fontSize)
         : field.font.size;
-      // For wrapping fields, resize scales the whole block: font AND wrap width
-      // together (keeps the layout proportional and moves the width nubs with
-      // the corners). Single-line fields have no width to scale.
-      const wrapping = isWrapping(field);
+      // Resize scales the whole block: font AND container width together, so the
+      // box stays proportional and the width nubs move with the corners.
       dragRef.current = {
         type: "resize",
         id,
         pivot,
         startDist: Math.hypot(e.clientX - pivot.x, e.clientY - pivot.y) || 1,
         baseSize,
-        baseW: wrapping ? (override.w ?? defaultBoxWidth(field)) : null,
+        baseW: override.w ?? defaultBoxWidth(field),
       };
     },
     [getSvg],
