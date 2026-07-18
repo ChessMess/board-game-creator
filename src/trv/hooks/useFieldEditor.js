@@ -1,6 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getField, defaultBoxWidth } from "../utils/fieldRegistry";
 
+// Whether a field wraps — only wrapping fields carry a width nub / fit-box.
+const isWrapping = (field) =>
+  (field.maxLines ?? (field.multiline ? 40 : 1)) > 1;
+
 // Rotation snaps to this increment (Shift bypasses to free rotation).
 const SNAP_DEG = 20;
 
@@ -74,23 +78,28 @@ export function useFieldEditor({ svgSelector, leader, updateFieldStyle }) {
       const baseSize = el
         ? parseFloat(getComputedStyle(el).fontSize)
         : field.font.size;
+      // For wrapping fields, resize scales the whole block: font AND wrap width
+      // together (keeps the layout proportional and moves the width nubs with
+      // the corners). Single-line fields have no width to scale.
+      const wrapping = isWrapping(field);
       dragRef.current = {
         type: "resize",
         id,
         pivot,
         startDist: Math.hypot(e.clientX - pivot.x, e.clientY - pivot.y) || 1,
         baseSize,
+        baseW: wrapping ? (override.w ?? defaultBoxWidth(field)) : null,
       };
     },
     [getSvg],
   );
 
   // Width handle: changes only the field's fit-box width (re-wrapping the text),
-  // independent of the corner uniform-scale handles. Relative drag — we capture
-  // the field's current width and the grab point, then apply the pointer delta,
-  // so the box moves FROM where you grabbed instead of snapping to the pointer.
-  // `sign` makes "drag outward = wider" hold for either grip regardless of anchor
-  // side; `factor` accounts for center-anchored boxes growing both ways at once.
+  // independent of the corner uniform-scale handles. The nub sits ON the box
+  // edge, so we map the pointer straight to a box width ("edge follows pointer"):
+  // grabbing yields the same width (no jump) and dragging keeps the edge under
+  // the cursor (1:1 tracking). `side` locks a center-anchored field to the
+  // grabbed edge so its mirror edge doesn't drive the width.
   const beginWidth = useCallback(
     (e, id) => {
       e.stopPropagation();
@@ -103,13 +112,10 @@ export function useFieldEditor({ svgSelector, leader, updateFieldStyle }) {
       const local = new DOMPoint(e.clientX, e.clientY).matrixTransform(
         ctm.inverse(),
       );
-      const override = leaderRef.current.fieldStyles?.[id] || {};
       dragRef.current = {
         type: "width",
         id,
-        startLocalX: local.x,
-        baseW: override.w != null ? override.w : defaultBoxWidth(field),
-        sign: local.x >= field.anchor.x ? 1 : -1,
+        side: local.x >= field.anchor.x ? "right" : "left",
       };
     },
     [getSvg],
@@ -165,12 +171,20 @@ export function useFieldEditor({ svgSelector, leader, updateFieldStyle }) {
       } else if (d.type === "resize") {
         const dist = Math.hypot(e.clientX - d.pivot.x, e.clientY - d.pivot.y);
         const size = Math.max(4, Math.min(400, (d.baseSize * dist) / d.startDist));
-        updateFieldStyle(d.id, { fontSize: +size.toFixed(1) });
+        const patch = { fontSize: +size.toFixed(1) };
+        // Wrapping fields: scale the fit-box width by the same ratio so the
+        // width nubs move with the corners and the wrap layout stays proportional.
+        if (d.baseW != null) {
+          const w = Math.max(8, Math.min(2000, (d.baseW * size) / d.baseSize));
+          patch.w = +w.toFixed(1);
+        }
+        updateFieldStyle(d.id, patch);
       } else if (d.type === "width") {
         // Map the pointer into the field's LOCAL space (group CTM inverse handles
-        // rotation), take the drag delta from the grab point, and convert it to
-        // rendered box units: undo the field's horizontal scaleX and (for a
-        // center-anchored box) double it, since the box grows from both edges.
+        // rotation), measure the signed distance from the anchor to the grabbed
+        // edge, and convert to rendered box units by undoing the field's
+        // horizontal scaleX (and doubling for a center-anchored box, which grows
+        // from both edges). The grabbed edge tracks the pointer 1:1.
         const g = svg.querySelector(`[data-field-id="${d.id}"]`);
         const field = getField(d.id);
         const ctm = g && g.getScreenCTM();
@@ -179,9 +193,14 @@ export function useFieldEditor({ svgSelector, leader, updateFieldStyle }) {
             ctm.inverse(),
           );
           const factor = field.anchor.textAnchor === "middle" ? 2 : 1;
-          const delta =
-            (local.x - d.startLocalX) * d.sign * factor * field.scaleX;
-          const w = Math.max(8, Math.min(2000, d.baseW + delta));
+          const reach =
+            d.side === "left"
+              ? field.anchor.x - local.x
+              : local.x - field.anchor.x;
+          const w = Math.max(
+            8,
+            Math.min(2000, Math.max(0, reach) * factor * field.scaleX),
+          );
           updateFieldStyle(d.id, { w: +w.toFixed(1) });
         }
       } else if (d.type === "rotate") {

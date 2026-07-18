@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
+import { getField, defaultBoxWidth } from "../utils/fieldRegistry";
 
-// HTML overlay drawing the selection outline + resize/rotate handles for the
-// selected field. Deliberately NOT part of the board SVG, so exports/snapshots
-// never contain handle artifacts. Positions are projected from the field
-// group's own getScreenCTM (which includes its move/rotate), recomputed on
-// selection, edits (leader), zoom, scroll, and resize.
+// HTML overlay drawing the selection outline + resize/rotate/width handles for
+// the selected field. Deliberately NOT part of the board SVG, so exports and
+// snapshots never contain handle artifacts. Positions are projected from the
+// field group's own getScreenCTM (which includes its move/rotate), recomputed
+// on selection, edits (leader), zoom, scroll, and resize.
 export default function FieldHandles({
   selectedId,
   leader,
@@ -23,7 +24,8 @@ export default function FieldHandles({
     const compute = () => {
       const svg = document.querySelector(svgSelector);
       const g = svg?.querySelector(`[data-field-id="${selectedId}"]`);
-      if (!g) {
+      const field = getField(selectedId);
+      if (!g || !field) {
         setGeom(null);
         return;
       }
@@ -42,31 +44,56 @@ export default function FieldHandles({
         const p = new DOMPoint(x, y).matrixTransform(ctm);
         return { x: p.x, y: p.y };
       };
-      const nw = project(bbox.x, bbox.y);
-      const ne = project(bbox.x + bbox.width, bbox.y);
-      const se = project(bbox.x + bbox.width, bbox.y + bbox.height);
-      const sw = project(bbox.x, bbox.y + bbox.height);
+      // The selection box spans the CONTAINER, not just the ink: for wrapping
+      // fields its width is the fit-box width (from w) — so the orange outline
+      // and corner handles always match the blue width nubs and widen together
+      // — and for single-line fields it's the text bbox. Height is the text
+      // block's own extent. One coherent box carries every handle. Local edge
+      // offsets undo the field's anamorphic horizontal scaleX.
+      const a = field.anchor;
+      const scaleX = field.scaleX || 1;
+      const wrapping = (field.maxLines ?? (field.multiline ? 40 : 1)) > 1;
+      let leftLocal, rightLocal;
+      if (wrapping) {
+        const w = leader.fieldStyles?.[selectedId]?.w ?? defaultBoxWidth(field);
+        if (a.textAnchor === "start") {
+          leftLocal = a.x;
+          rightLocal = a.x + w / scaleX;
+        } else if (a.textAnchor === "end") {
+          leftLocal = a.x - w / scaleX;
+          rightLocal = a.x;
+        } else {
+          leftLocal = a.x - w / (2 * scaleX);
+          rightLocal = a.x + w / (2 * scaleX);
+        }
+      } else {
+        leftLocal = bbox.x;
+        rightLocal = bbox.x + bbox.width;
+      }
+      const topLocal = bbox.y;
+      const botLocal = bbox.y + bbox.height;
+      const nw = project(leftLocal, topLocal);
+      const ne = project(rightLocal, topLocal);
+      const se = project(rightLocal, botLocal);
+      const sw = project(leftLocal, botLocal);
       const topMid = { x: (nw.x + ne.x) / 2, y: (nw.y + ne.y) / 2 };
       const center = { x: (nw.x + se.x) / 2, y: (nw.y + se.y) / 2 };
-      const leftMid = { x: (nw.x + sw.x) / 2, y: (nw.y + sw.y) / 2 };
-      const rightMid = { x: (ne.x + se.x) / 2, y: (ne.y + se.y) / 2 };
-      // Push the width grips outward past the corner handles so they don't
-      // stack on top of them (short single-line boxes cluster all handles).
-      const edgeOut = (p, dist) => {
-        const ox = p.x - center.x;
-        const oy = p.y - center.y;
-        const l = Math.hypot(ox, oy) || 1;
-        return { x: p.x + (ox / l) * dist, y: p.y + (oy / l) * dist };
-      };
-      const leftGrab = edgeOut(leftMid, 20);
-      const rightGrab = edgeOut(rightMid, 20);
       let nx = topMid.x - center.x;
       let ny = topMid.y - center.y;
       const len = Math.hypot(nx, ny) || 1;
       nx /= len;
       ny /= len;
       const rot = { x: topMid.x + nx * 26, y: topMid.y + ny * 26 };
-      setGeom({ nw, ne, se, sw, topMid, leftGrab, rightGrab, rot });
+
+      // Width nubs on the resizable container edge(s): a start box's left edge
+      // and an end box's right edge are fixed by the layout, so no nub there.
+      const midY = (topLocal + botLocal) / 2;
+      const leftNub =
+        wrapping && a.textAnchor !== "start" ? project(leftLocal, midY) : null;
+      const rightNub =
+        wrapping && a.textAnchor !== "end" ? project(rightLocal, midY) : null;
+
+      setGeom({ nw, ne, se, sw, topMid, rot, leftNub, rightNub });
     };
     const schedule = () => {
       cancelAnimationFrame(raf);
@@ -83,7 +110,7 @@ export default function FieldHandles({
   }, [selectedId, leader, zoom, svgSelector]);
 
   if (!geom) return null;
-  const { nw, ne, se, sw, topMid, leftGrab, rightGrab, rot } = geom;
+  const { nw, ne, se, sw, topMid, rot, leftNub, rightNub } = geom;
 
   const corner = (pos, key, cursor) => (
     <div
@@ -106,8 +133,8 @@ export default function FieldHandles({
     />
   );
 
-  // Edge grips adjust only the box width (re-wraps text). A big transparent
-  // hit area makes them easy to grab; a tall blue bar is the visible affordance.
+  // Width nub: a large transparent hit area (easy to grab) with a small blue
+  // bar centered on the true box edge.
   const widthHandle = (pos, key) => (
     <div
       key={key}
@@ -115,10 +142,10 @@ export default function FieldHandles({
       title="Drag to change width (re-wraps text)"
       style={{
         position: "fixed",
-        left: pos.x - 13,
-        top: pos.y - 17,
-        width: 26,
-        height: 34,
+        left: pos.x - 12,
+        top: pos.y - 15,
+        width: 24,
+        height: 30,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -132,11 +159,11 @@ export default function FieldHandles({
       <div
         style={{
           width: 8,
-          height: 24,
+          height: 22,
           background: "#38bdf8",
           border: "1px solid #fff",
           borderRadius: 2,
-          boxShadow: "0 0 2px rgba(0,0,0,0.4)",
+          boxShadow: "0 0 2px rgba(0,0,0,0.5)",
         }}
       />
     </div>
@@ -167,8 +194,8 @@ export default function FieldHandles({
       {corner(ne, "ne", "nesw-resize")}
       {corner(se, "se", "nwse-resize")}
       {corner(sw, "sw", "nesw-resize")}
-      {widthHandle(leftGrab, "wl")}
-      {widthHandle(rightGrab, "wr")}
+      {leftNub && widthHandle(leftNub, "wl")}
+      {rightNub && widthHandle(rightNub, "wr")}
       <div
         onPointerDown={(e) => editor.beginRotate(e, selectedId)}
         title="Rotate (Shift = free)"
