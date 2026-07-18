@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "crewLeaderName": "TEST LEADER",
+  "crewLeaderTitle": "Test Commander",
+  "portraitDataUrl": null,
+  "specialAbilityName": "Test Ability",
+  "specialAbilityDescription": "A special ability for testing.",
+  "slots": [
+    {
+      "effectName": "AIRSTRIKE",
+      "dice": "1",
+      "description": "Test airstrike effect."
+    },
+    {
+      "effectName": "NITRO",
+      "dice": "2",
+      "description": "Test nitro effect."
+    },
+    {
+      "effectName": "DRIFT",
+      "dice": "3",
+      "description": "Test drift effect."
+    },
+    {
+      "effectName": "REPAIR",
+      "dice": "4",
+      "description": "Test repair effect."
+    }
+  ],
+  "commandTokens": 5,
+  "accentColor": "#00ff00",
+  "nameColor": "#fff6d3",
+  "fieldStyles": {},
+  "author_name": "Test Author",
+  "revision_no": "1",
+  "contact_info": "",
+  "author_description": "A test crew leader for E2E testing."
+}

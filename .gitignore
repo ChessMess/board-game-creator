@@ -6,4 +6,5 @@ local/
 serviceAccountKey.json
 .env
 .env.*
-!.env.example
+!.env.exampleplaywright-report/
+test-results/

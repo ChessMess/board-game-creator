@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 3,
+  "name": "TEST HERO",
+  "warriors": 5,
+  "spirit": 3,
+  "portraitDataUrl": null,
+  "flavorText": "A test hero for E2E testing.",
+  "bannerAction": "Gain 1 potion",
+  "moveSubtitle": "(SPLIT AS NEEDED)",
+  "moveInstructions": "Spend 1 * to double your move",
+  "battleSubtitle": "Battle a foe on your space",
+  "questSubtitle": "explore a dungeon or Complete a quest",
+  "cleanseSubtitle": "Remove all skulls from your space",
+  "reinforceSubtitle": "ON A SPACE WITH A BUILDING",
+  "bazaarInstructions": "Free: Gain 1 gear\n2 *: Gain 1 treasure",
+  "villageInstructions": "Free: Gain 6 #\n1 *: Gain 12 #",
+  "sanctuaryInstructions": "Free: Gain 1 *\n5 *: Remove all your\ncorruptions",
+  "citadelInstructions": "Free: Gain 1 potion\n5 *: Gain 1 virtue",
+  "endOfTurnAction": "Drop 1 ^ into the Tower",
+  "virtues": [
+    {
+      "name": "TEST VIRTUE 1",
+      "type": "advantage",
+      "description": "+1 HUMANOID Test",
+      "kingdom": ""
+    },
+    {
+      "name": "TEST VIRTUE 2",
+      "type": "standard",
+      "description": "Test virtue ability.",
+      "kingdom": ""
+    },
+    {
+      "name": "TEST VIRTUE 3",
+      "type": "champion",
+      "description": "A champion virtue for testing.",
+      "kingdom": ""
+    }
+  ],
+  "author_name": "Test Author",
+  "revision_no": "1",
+  "description": "A test hero created for E2E testing.",
+  "contact": "",
+  "theme": "orphaned_scion",
+  "customTheme": null
+}
