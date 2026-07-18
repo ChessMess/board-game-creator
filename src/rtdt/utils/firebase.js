@@ -3,10 +3,6 @@ import {
   auth,
   assertFirebaseAvailable,
   signInWithGoogle,
-  getCurrentUser,
-  onAuthChange,
-  isAdmin,
-  signOutAdmin,
   ref,
   set,
   get,
@@ -18,11 +14,6 @@ import {
   serverTimestamp,
 } from "../../shared/utils/firebaseCore";
 import { sanitizeString } from "./heroIO";
-
-/* ── Auth: re-export from shared core ── */
-
-export { signInWithGoogle, getCurrentUser, onAuthChange, isAdmin, signOutAdmin };
-export { signInWithGoogle as signInAdmin };
 
 /* ── Submit a hero to pending (requires sign-in) ── */
 

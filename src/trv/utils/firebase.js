@@ -3,8 +3,6 @@ import {
   auth,
   assertFirebaseAvailable,
   signInWithGoogle,
-  getCurrentUser,
-  isAdmin,
   ref,
   set,
   get,
@@ -16,10 +14,6 @@ import {
   serverTimestamp,
 } from "../../shared/utils/firebaseCore";
 import { sanitizeString } from "./leaderIO";
-
-/* ── Auth: re-export from shared core ── */
-
-export { signInWithGoogle, getCurrentUser, isAdmin };
 
 /* ── Submit a crew leader to pending (requires sign-in) ── */
 
