@@ -1,17 +1,9 @@
 import { serverTimestamp } from "../../shared/utils/firebaseCore";
 import { createGalleryApi } from "../../shared/utils/galleryApi";
 import { sanitizeString } from "./heroIO";
+import { DEFAULT_HERO_NAME, DEFAULT_VIRTUE_NAMES } from "../data/defaultHero";
 
-const DEFAULT_NAMES = ["HERO NAME", ""];
-const DEFAULT_VIRTUE_NAMES = [
-  "VIRTUE",
-  "VIRTUE 1",
-  "VIRTUE 2",
-  "VIRTUE 3",
-  "VIRTUE 4",
-  "VIRTUE 5",
-  "VIRTUE 6",
-];
+const DEFAULT_NAMES = [DEFAULT_HERO_NAME, ""];
 
 const api = createGalleryApi({
   entityPath: "heroes",
@@ -43,7 +35,7 @@ const api = createGalleryApi({
     }));
 
     return {
-      name: sanitizeString(hero.name || "HERO NAME"),
+      name: sanitizeString(hero.name || DEFAULT_HERO_NAME),
       schemaVersion: hero.schemaVersion || 2,
       warriors: hero.warriors,
       spirit: hero.spirit,

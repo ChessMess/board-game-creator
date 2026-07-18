@@ -1,17 +1,13 @@
-import { useState } from "react";
-import { submitHero, withdrawPendingHero, isPendingHashValid } from "../utils/firebase";
+import {
+  submitHero,
+  withdrawPendingHero,
+  isPendingHashValid,
+} from "../utils/firebase";
 import { savePendingRef, getPendingRef, clearPendingRef } from "../utils/heroIO";
+import { DEFAULT_HERO_NAME, DEFAULT_VIRTUE_NAMES } from "../data/defaultHero";
+import { useGallery as useGalleryShared } from "../../shared/hooks/useGallery";
 
-const SHARE_DEFAULT_NAMES = ["HERO NAME", ""];
-const SHARE_DEFAULT_VIRTUE_NAMES = [
-  "VIRTUE",
-  "VIRTUE 1",
-  "VIRTUE 2",
-  "VIRTUE 3",
-  "VIRTUE 4",
-  "VIRTUE 5",
-  "VIRTUE 6",
-];
+const SHARE_DEFAULT_NAMES = [DEFAULT_HERO_NAME, ""];
 
 const getShareIssues = (h) => {
   const issues = [];
@@ -21,7 +17,7 @@ const getShareIssues = (h) => {
   if (virtues.length === 0) issues.push("Add at least one virtue.");
   else if (
     virtues.every((v) =>
-      SHARE_DEFAULT_VIRTUE_NAMES.includes((v.name || "").trim().toUpperCase()),
+      DEFAULT_VIRTUE_NAMES.includes((v.name || "").trim().toUpperCase()),
     )
   )
     issues.push("Customize your virtue names (don't use the defaults).");
@@ -36,80 +32,23 @@ const getShareIssues = (h) => {
 
 export function useGallery({ heroState, clearFileHandle, confirm, showAlert, showStatus }) {
   const { hero, replaceHero, hasUnsavedChanges } = heroState;
-  const [submitting, setSubmitting] = useState(false);
-  const [shareWarning, setShareWarning] = useState(null);
-
-  const handleShareToGallery = async () => {
-    const issues = getShareIssues(hero);
-    if (issues.length > 0) {
-      setShareWarning(issues);
-      return;
-    }
-    const ok = await confirm({
-      title: "Share to Gallery",
-      message:
-        "This hero will be reviewed before appearing in the community gallery.",
-      confirmLabel: "Share",
-    });
-    if (!ok) return;
-    setSubmitting(true);
-    try {
-      let isReplacement = false;
-      const prior = getPendingRef();
-      if (prior) {
-        const stillPending = await isPendingHashValid(prior.hash);
-        if (!stillPending) {
-          clearPendingRef();
-        } else {
-          const replace = await confirm({
-            title: "Replace Pending Submission?",
-            message: `You have a pending submission for "${prior.heroName}" awaiting review. Replace it with this updated version?`,
-            confirmLabel: "Replace",
-            cancelLabel: "Cancel",
-          });
-          if (!replace) return;
-          try {
-            await withdrawPendingHero(prior.hash);
-          } catch {
-            /* already gone */
-          }
-          clearPendingRef();
-          isReplacement = true;
-        }
-      }
-      const hash = await submitHero(hero);
-      savePendingRef(hash, hero.name);
-      showStatus(
-        isReplacement ? "Hero submission updated!" : "Hero submitted for review!",
-      );
-    } catch (err) {
-      console.error("Submit failed:", err);
-      showAlert({ title: "Share Failed", message: err.message });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleLoadFromGallery = async (galleryHero) => {
-    if (hasUnsavedChanges()) {
-      const ok = await confirm({
-        title: "Load Gallery Hero",
-        message: "Current unsaved changes will be lost.",
-        confirmLabel: "Load",
-        destructive: true,
-      });
-      if (!ok) return;
-    }
-    clearFileHandle();
-    replaceHero(galleryHero);
-    showStatus("Hero loaded from gallery");
-  };
-
-  return {
-    submitting,
-    shareWarning,
-    setShareWarning,
-    handleShareToGallery,
-    handleLoadFromGallery,
-  };
+  return useGalleryShared({
+    item: hero,
+    replaceItem: replaceHero,
+    hasUnsavedChanges,
+    clearFileHandle,
+    confirm,
+    showAlert,
+    showStatus,
+    getShareIssues,
+    submit: submitHero,
+    withdrawPending: withdrawPendingHero,
+    isPendingHashValid,
+    savePendingRef,
+    getPendingRef,
+    clearPendingRef,
+    getName: (h) => h.name,
+    getPriorName: (prior) => prior.heroName,
+    itemLabel: "hero",
+  });
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CollapsibleSection from "../../shared/components/CollapsibleSection";
 import { getField, resolveFieldStyle } from "../utils/fieldRegistry";
+import { DEFAULT_EFFECT_NAMES } from "../data/defaultCrewLeader";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -125,8 +126,6 @@ function FieldStyleStrip({ fieldId, override = {}, accent, nameColor, onChange, 
   );
 }
 
-const EFFECT_OPTIONS = ["REPAIR", "NITRO", "DRIFT", "AIRSTRIKE"];
-
 function SlotSection({ index, slot, updateSlot, styleStrip }) {
   return (
     <div className="space-y-2 pt-2 border-t border-gray-700 first:border-t-0 first:pt-0">
@@ -139,7 +138,7 @@ function SlotSection({ index, slot, updateSlot, styleStrip }) {
         <select
           className={inputClass}
           value={
-            EFFECT_OPTIONS.includes(slot.effectName)
+            DEFAULT_EFFECT_NAMES.includes(slot.effectName)
               ? slot.effectName
               : "__custom__"
           }
@@ -151,7 +150,7 @@ function SlotSection({ index, slot, updateSlot, styleStrip }) {
             }
           }}
         >
-          {EFFECT_OPTIONS.map((name) => (
+          {DEFAULT_EFFECT_NAMES.map((name) => (
             <option key={name} value={name}>
               {name}
             </option>
@@ -159,7 +158,7 @@ function SlotSection({ index, slot, updateSlot, styleStrip }) {
           <option value="__custom__">Custom...</option>
         </select>
       </label>
-      {!EFFECT_OPTIONS.includes(slot.effectName) && (
+      {!DEFAULT_EFFECT_NAMES.includes(slot.effectName) && (
         <Field
           label="Custom Effect Name"
           value={slot.effectName}

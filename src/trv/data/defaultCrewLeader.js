@@ -1,3 +1,7 @@
+export const DEFAULT_CREW_LEADER_NAME = 'CREW LEADER';
+// UI-facing order (CrewLeaderForm.jsx's effect picker) — the canonical order.
+export const DEFAULT_EFFECT_NAMES = ['REPAIR', 'NITRO', 'DRIFT', 'AIRSTRIKE'];
+
 export const defaultCrewLeader = {
   schemaVersion: 2,
   crewLeaderName: '',

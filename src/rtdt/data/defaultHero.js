@@ -1,5 +1,16 @@
 export const MAX_VIRTUES = 6;
 
+export const DEFAULT_HERO_NAME = 'HERO NAME';
+export const DEFAULT_VIRTUE_NAMES = [
+  'VIRTUE',
+  'VIRTUE 1',
+  'VIRTUE 2',
+  'VIRTUE 3',
+  'VIRTUE 4',
+  'VIRTUE 5',
+  'VIRTUE 6',
+];
+
 export function createEmptyVirtue(name = 'VIRTUE') {
   return {
     name,

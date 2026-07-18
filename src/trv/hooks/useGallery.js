@@ -1,9 +1,13 @@
-import { useState } from "react";
-import { submitLeader, withdrawPendingLeader, isPendingHashValid } from "../utils/firebase";
+import {
+  submitLeader,
+  withdrawPendingLeader,
+  isPendingHashValid,
+} from "../utils/firebase";
 import { savePendingRef, getPendingRef, clearPendingRef } from "../utils/leaderIO";
+import { DEFAULT_CREW_LEADER_NAME, DEFAULT_EFFECT_NAMES } from "../data/defaultCrewLeader";
+import { useGallery as useGalleryShared } from "../../shared/hooks/useGallery";
 
-const SHARE_DEFAULT_NAMES = ["CREW LEADER", ""];
-const SHARE_DEFAULT_EFFECT_NAMES = ["AIRSTRIKE", "NITRO", "DRIFT", "REPAIR"];
+const SHARE_DEFAULT_NAMES = [DEFAULT_CREW_LEADER_NAME, ""];
 
 const getShareIssues = (leader) => {
   const issues = [];
@@ -11,7 +15,7 @@ const getShareIssues = (leader) => {
     issues.push("Give your crew leader a unique name.");
   const slots = leader.slots || [];
   const allDefaultEffects = slots.every((s) =>
-    SHARE_DEFAULT_EFFECT_NAMES.includes((s.effectName || "").trim().toUpperCase()),
+    DEFAULT_EFFECT_NAMES.includes((s.effectName || "").trim().toUpperCase()),
   );
   const allEmptyDescs = slots.every((s) => !(s.description || "").trim());
   if (allDefaultEffects && allEmptyDescs)
@@ -27,80 +31,24 @@ const getShareIssues = (leader) => {
 
 export function useGallery({ leaderState, clearFileHandle, confirm, showAlert, showStatus }) {
   const { leader, replaceLeader, hasUnsavedChanges } = leaderState;
-  const [submitting, setSubmitting] = useState(false);
-  const [shareWarning, setShareWarning] = useState(null);
-
-  const handleShareToGallery = async () => {
-    const issues = getShareIssues(leader);
-    if (issues.length > 0) {
-      setShareWarning(issues);
-      return;
-    }
-    const ok = await confirm({
-      title: "Share to Gallery",
-      message:
-        "This crew leader will be reviewed before appearing in the community gallery.",
-      confirmLabel: "Share",
-    });
-    if (!ok) return;
-    setSubmitting(true);
-    try {
-      let isReplacement = false;
-      const prior = getPendingRef();
-      if (prior) {
-        const stillPending = await isPendingHashValid(prior.hash);
-        if (!stillPending) {
-          clearPendingRef();
-        } else {
-          const replace = await confirm({
-            title: "Replace Pending Submission?",
-            message: `You have a pending submission for "${prior.leaderName}" awaiting review. Replace it with this updated version?`,
-            confirmLabel: "Replace",
-            cancelLabel: "Cancel",
-          });
-          if (!replace) return;
-          try {
-            await withdrawPendingLeader(prior.hash);
-          } catch {
-            /* already gone */
-          }
-          clearPendingRef();
-          isReplacement = true;
-        }
-      }
-      const hash = await submitLeader(leader);
-      savePendingRef(hash, leader.crewLeaderName);
-      showStatus(
-        isReplacement ? "Leader submission updated!" : "Leader submitted for review!",
-      );
-    } catch (err) {
-      console.error("Submit failed:", err);
-      showAlert({ title: "Share Failed", message: err.message });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleLoadFromGallery = async (galleryLeader) => {
-    if (hasUnsavedChanges()) {
-      const ok = await confirm({
-        title: "Load Gallery Leader",
-        message: "Current unsaved changes will be lost.",
-        confirmLabel: "Load",
-        destructive: true,
-      });
-      if (!ok) return;
-    }
-    clearFileHandle();
-    replaceLeader(galleryLeader);
-    showStatus("Leader loaded from gallery");
-  };
-
-  return {
-    submitting,
-    shareWarning,
-    setShareWarning,
-    handleShareToGallery,
-    handleLoadFromGallery,
-  };
+  return useGalleryShared({
+    item: leader,
+    replaceItem: replaceLeader,
+    hasUnsavedChanges,
+    clearFileHandle,
+    confirm,
+    showAlert,
+    showStatus,
+    getShareIssues,
+    submit: submitLeader,
+    withdrawPending: withdrawPendingLeader,
+    isPendingHashValid,
+    savePendingRef,
+    getPendingRef,
+    clearPendingRef,
+    getName: (l) => l.crewLeaderName,
+    getPriorName: (prior) => prior.leaderName,
+    itemLabel: "crew leader",
+    shortLabel: "leader",
+  });
 }

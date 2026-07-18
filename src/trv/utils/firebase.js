@@ -1,9 +1,12 @@
 import { serverTimestamp } from "../../shared/utils/firebaseCore";
 import { createGalleryApi } from "../../shared/utils/galleryApi";
 import { sanitizeString } from "./leaderIO";
+import {
+  DEFAULT_CREW_LEADER_NAME,
+  DEFAULT_EFFECT_NAMES,
+} from "../data/defaultCrewLeader";
 
-const DEFAULT_NAMES = ["CREW LEADER", ""];
-const DEFAULT_EFFECT_NAMES = ["AIRSTRIKE", "NITRO", "DRIFT", "REPAIR"];
+const DEFAULT_NAMES = [DEFAULT_CREW_LEADER_NAME, ""];
 
 const api = createGalleryApi({
   entityPath: "leaders",
@@ -28,7 +31,9 @@ const api = createGalleryApi({
     }));
 
     return {
-      crewLeaderName: sanitizeString(leader.crewLeaderName || "CREW LEADER"),
+      crewLeaderName: sanitizeString(
+        leader.crewLeaderName || DEFAULT_CREW_LEADER_NAME,
+      ),
       crewLeaderTitle: sanitizeString(leader.crewLeaderTitle || ""),
       schemaVersion: leader.schemaVersion || 2,
       portraitDataUrl: portrait,
