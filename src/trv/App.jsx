@@ -8,7 +8,6 @@ import CrewLeaderBoard from "./components/CrewLeaderBoard";
 import CrewLeaderForm from "./components/CrewLeaderForm";
 import FieldHandles from "./components/FieldHandles";
 import { useFieldEditor } from "./hooks/useFieldEditor";
-import RecentLeaderRow from "./components/RecentLeaderRow";
 import GalleryModal from "./components/GalleryModal";
 import AdminPanel from "./components/AdminPanel";
 import { validateLeaderData } from "./utils/leaderIO";
@@ -23,6 +22,7 @@ import { useSnapshot } from "../shared/hooks/useSnapshot";
 import SidebarHeader from "../shared/components/SidebarHeader";
 import StatusMessage from "../shared/components/StatusMessage";
 import RecentsList from "../shared/components/RecentsList";
+import RecentRow from "../shared/components/RecentRow";
 import ZoomControls from "../shared/components/ZoomControls";
 import SnapshotButton from "../shared/components/SnapshotButton";
 import SidebarToggleButton from "../shared/components/SidebarToggleButton";
@@ -263,9 +263,11 @@ export default function TrvApp() {
           {recents.length > 0 && (
             <RecentsList label="Recent Leaders" onClearAll={handleClearRecents}>
               {recents.map((entry) => (
-                <RecentLeaderRow
+                <RecentRow
                   key={entry.id}
                   entry={entry}
+                  title={entry.leaderName}
+                  countLabel={`${entry.slotCount} slots`}
                   onLoad={handleLoadRecent}
                   onRemove={handleRemoveRecent}
                   onOpenNewWindow={handleOpenRecentInNewWindow}

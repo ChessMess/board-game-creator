@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import HeroBoard from "./components/HeroBoard";
 import HeroForm from "./components/HeroForm";
-import RecentHeroRow from "./components/RecentHeroRow";
 import { defaultHero } from "./data/defaultHero";
 import { validateHeroData } from "./utils/heroIO";
 import { resolveTheme } from "./data/themes";
@@ -19,6 +18,7 @@ import { formatTimeAgo } from "../shared/utils/timeUtils";
 import SidebarHeader from "../shared/components/SidebarHeader";
 import StatusMessage from "../shared/components/StatusMessage";
 import RecentsList from "../shared/components/RecentsList";
+import RecentRow from "../shared/components/RecentRow";
 import ZoomControls from "../shared/components/ZoomControls";
 import SnapshotButton from "../shared/components/SnapshotButton";
 import SidebarToggleButton from "../shared/components/SidebarToggleButton";
@@ -278,9 +278,11 @@ export default function V2App() {
           {recents.length > 0 && (
             <RecentsList label="Recent Heroes" onClearAll={handleClearRecents}>
               {recents.map((entry) => (
-                <RecentHeroRow
+                <RecentRow
                   key={entry.id}
                   entry={entry}
+                  title={entry.heroName}
+                  countLabel={`${entry.virtueCount} virtues`}
                   onLoad={handleLoadRecent}
                   onRemove={handleRemoveRecent}
                   onOpenNewWindow={handleOpenRecentInNewWindow}
