@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchApprovedHeroes, deleteApprovedHero, deleteOwnHero, isAdmin, getCurrentUser } from "../utils/firebase";
 import { validateHeroData, heroToJson } from "../utils/heroIO";
+import { sanitizeFilename, downloadBlob } from "../../shared/utils/filenames";
 import GalleryCard from "./GalleryCard";
 
 export default function GalleryModal({ onClose, onLoadHero, confirm }) {
@@ -41,13 +42,7 @@ export default function GalleryModal({ onClose, onLoadHero, confirm }) {
   const handleDownload = (hero) => {
     const json = heroToJson(hero);
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const name = (hero.name || "hero").toLowerCase().replace(/\s+/g, "-");
-    a.download = `${name}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${sanitizeFilename(hero.name, "hero")}.json`);
   };
 
   const handleDelete = async (hero) => {

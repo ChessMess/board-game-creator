@@ -109,6 +109,24 @@ function longestPrefix(word, font, size, ls, avail) {
   return lo;
 }
 
+// Word-wrap text into lines respecting a character limit per line.
+export function wrapText(text, maxChars = 26) {
+  if (!text) return [];
+  const words = text.split(/\s+/);
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    if (current && (current.length + 1 + word.length) > maxChars) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? current + ' ' + word : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 export function fitText(
   text,
   {

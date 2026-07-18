@@ -1,19 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { svgElementToPngBlob } from "../utils/svgRaster";
 import { getEmbeddedFontCSS } from "../utils/embeddedFonts";
+import { sanitizeFilename, downloadBlob } from "../utils/filenames";
 
 // Increase for higher-res clipboard/download output (e.g. 3 = 3×, 1 = native)
 const SNAPSHOT_SCALE = 2;
-
-const sanitizeFilename = (name, fallback = "subject") => {
-  if (!name) return fallback;
-  const sanitized = name
-    .trim()
-    .replace(/[<>:"/\\|?*]/g, "")
-    .replace(/\s+/g, "-")
-    .toLowerCase();
-  return sanitized || fallback;
-};
 
 const renderBoardPngBlob = async ({ svgSelector, boardW, boardH, fontSetKey }) => {
   const svgEl = document.querySelector(svgSelector);
@@ -34,14 +25,6 @@ const renderBoardPngBlob = async ({ svgSelector, boardW, boardH, fontSetKey }) =
 
 const copyBlobToClipboard = async (blob) => {
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-};
-
-const downloadBlob = (blob, filename) => {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
 };
 
 const captureSnapshot = async (

@@ -1,18 +1,12 @@
 import { useState } from "react";
 import { useSnapshot } from "../../shared/hooks/useSnapshot";
+import { sanitizeFilename as sanitizeFilenameBase } from "../../shared/utils/filenames";
 import jsPDF from "jspdf";
 import { svg2pdf } from "svg2pdf.js";
 import coverBg from "../assets/rtdt_cover2.jpg";
 
-const sanitizeFilename = (name) => {
-  if (!name || name === "HERO NAME") return "hero";
-  const sanitized = name
-    .trim()
-    .replace(/[<>:"/\\|?*]/g, "")
-    .replace(/\s+/g, "-")
-    .toLowerCase();
-  return sanitized || "hero";
-};
+const sanitizeFilename = (name) =>
+  sanitizeFilenameBase(name === "HERO NAME" ? null : name, "hero");
 
 const rasterizeSvgImage = (imgEl) =>
   new Promise((resolve, reject) => {

@@ -14,6 +14,7 @@ import {
   END_OF_TURN_POS,
 } from '../utils/boardLayout';
 import { IconTextLine, IconTextBlock } from '../utils/iconText';
+import { wrapText } from '../../shared/utils/textFit';
 
 function splitFlavor(text) {
   if (!text) return ['', '', ''];
@@ -110,24 +111,6 @@ function ChampionArtwork({ slotPos, url }) {
       height={CHP_HOME.h}
     />
   );
-}
-
-// Simple word-wrap: split text into lines that fit roughly within maxChars
-function wrapText(text, maxChars = 26) {
-  if (!text) return [];
-  const words = text.split(/\s+/);
-  const lines = [];
-  let current = '';
-  for (const word of words) {
-    if (current && (current.length + 1 + word.length) > maxChars) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = current ? current + ' ' + word : word;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
 }
 
 function VirtueTitle({ slotPos, offset, children, fontSize = '11.25px', themeColors }) {

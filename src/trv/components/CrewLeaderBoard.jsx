@@ -15,27 +15,9 @@ import {
   resolveFieldStyle,
   defaultBoxWidth,
 } from "../utils/fieldRegistry";
-import { fitText, clearMeasureCache } from "../../shared/utils/textFit";
+import { fitText, clearMeasureCache, wrapText } from "../../shared/utils/textFit";
 import { useFontsReady } from "../../shared/hooks/useFontsReady";
 import { TRV_FONT_SPECS } from "../../shared/utils/fontReady";
-
-// Simple word-wrap: split text into lines fitting roughly maxChars per line
-function wrapText(text, maxChars = 28) {
-  if (!text) return [];
-  const words = text.split(/\s+/);
-  const lines = [];
-  let current = "";
-  for (const word of words) {
-    if (current && current.length + 1 + word.length > maxChars) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = current ? current + " " + word : word;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
 
 // 5-point star polygon centered at origin, radius 12
 const STAR_POINTS = (() => {

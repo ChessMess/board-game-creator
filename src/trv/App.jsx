@@ -27,17 +27,10 @@ import ZoomControls from "../shared/components/ZoomControls";
 import SnapshotButton from "../shared/components/SnapshotButton";
 import SidebarToggleButton from "../shared/components/SidebarToggleButton";
 import DesignerCredit from "../shared/components/DesignerCredit";
+import { sanitizeFilename as sanitizeFilenameBase } from "../shared/utils/filenames";
 
-const sanitizeFilename = (name) => {
-  if (!name || name === "CREW LEADER") return "crew-leader";
-  return (
-    name
-      .trim()
-      .replace(/[<>:"/\\|?*]/g, "")
-      .replace(/\s+/g, "-")
-      .toLowerCase() || "crew-leader"
-  );
-};
+const sanitizeFilename = (name) =>
+  sanitizeFilenameBase(name === "CREW LEADER" ? null : name, "crew-leader");
 
 export default function TrvApp() {
   const leaderState = useLeaderState();

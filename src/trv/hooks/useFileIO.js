@@ -8,6 +8,7 @@ import {
   removeFromRecents,
   clearAllRecents,
 } from "../utils/leaderIO";
+import { sanitizeFilename, downloadBlob } from "../../shared/utils/filenames";
 
 const writeToFileHandle = async (handle, json) => {
   const writable = await handle.createWritable();
@@ -37,10 +38,10 @@ export function useFileIO({ leaderState, confirm, showPrompt, showStatus }) {
 
   const handleSaveJson = async () => {
     const json = leaderToJson(leader);
-    const defaultName =
-      leader.crewLeaderName && leader.crewLeaderName !== "CREW LEADER"
-        ? leader.crewLeaderName.toLowerCase().replace(/\s+/g, "-")
-        : "crew-leader";
+    const defaultName = sanitizeFilename(
+      leader.crewLeaderName === "CREW LEADER" ? null : leader.crewLeaderName,
+      "crew-leader",
+    );
 
     if (fileHandleRef.current) {
       try {
@@ -84,12 +85,7 @@ export function useFileIO({ leaderState, confirm, showPrompt, showStatus }) {
     });
     if (!filename) return;
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename.endsWith(".json") ? filename : `${filename}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, filename.endsWith(".json") ? filename : `${filename}.json`);
     leaderState.markSaved(leader);
     showStatus("Crew leader saved to file");
   };

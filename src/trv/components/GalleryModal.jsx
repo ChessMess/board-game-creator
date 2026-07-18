@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchApprovedLeaders, deleteApprovedLeader, deleteOwnLeader, isAdmin, getCurrentUser } from "../utils/firebase";
 import { validateLeaderData, leaderToJson } from "../utils/leaderIO";
+import { sanitizeFilename, downloadBlob } from "../../shared/utils/filenames";
 import GalleryCard from "./GalleryCard";
 
 export default function GalleryModal({ onClose, onLoadLeader, confirm }) {
@@ -41,13 +42,7 @@ export default function GalleryModal({ onClose, onLoadLeader, confirm }) {
   const handleDownload = (leader) => {
     const json = leaderToJson(leader);
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const name = (leader.crewLeaderName || "crew-leader").toLowerCase().replace(/\s+/g, "-");
-    a.download = `${name}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${sanitizeFilename(leader.crewLeaderName, "crew-leader")}.json`);
   };
 
   const handleDelete = async (leader) => {

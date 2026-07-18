@@ -8,6 +8,7 @@ import {
   removeFromRecents,
   clearAllRecents,
 } from "../utils/heroIO";
+import { sanitizeFilename, downloadBlob } from "../../shared/utils/filenames";
 
 const writeToFileHandle = async (handle, json) => {
   const writable = await handle.createWritable();
@@ -37,10 +38,10 @@ export function useFileIO({ heroState, confirm, showPrompt, showStatus }) {
 
   const handleSaveJson = async () => {
     const json = heroToJson(hero);
-    const defaultName =
-      hero.name && hero.name !== "HERO NAME"
-        ? hero.name.toLowerCase().replace(/\s+/g, "-")
-        : "hero";
+    const defaultName = sanitizeFilename(
+      hero.name === "HERO NAME" ? null : hero.name,
+      "hero",
+    );
 
     if (fileHandleRef.current) {
       try {
@@ -84,12 +85,7 @@ export function useFileIO({ heroState, confirm, showPrompt, showStatus }) {
     });
     if (!filename) return;
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename.endsWith(".json") ? filename : `${filename}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, filename.endsWith(".json") ? filename : `${filename}.json`);
     heroState.markSaved(hero);
     showStatus("Hero saved to file");
   };
