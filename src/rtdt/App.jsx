@@ -5,6 +5,7 @@ import { defaultHero } from "./data/defaultHero";
 import { validateHeroData } from "./utils/heroIO";
 import { resolveTheme } from "./data/themes";
 import { buildThemedSvgUrls, revokeThemedSvgUrls } from "./utils/svgTheme";
+import { warmBoardAssets } from "../shared/utils/svgRaster";
 import GalleryModal from "./components/GalleryModal";
 import AdminPanel from "./components/AdminPanel";
 import { useHeroState } from "./hooks/useHeroState";
@@ -137,6 +138,15 @@ export default function V2App() {
   }, [themedUrls]);
 
   // --- Effects ---
+  useEffect(() => {
+    warmBoardAssets({
+      svgSelector: "#hero-board-container svg",
+      width: 1213,
+      height: 808,
+      scale: 3,
+    });
+  }, []);
+
   useEffect(() => {
     const el = cardAreaRef.current;
     if (!el) return;

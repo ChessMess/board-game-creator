@@ -1,53 +1,13 @@
 import { useState } from "react";
 import { useSnapshot } from "../../shared/hooks/useSnapshot";
 import { sanitizeFilename as sanitizeFilenameBase } from "../../shared/utils/filenames";
+import { rasterizeSvgUrl, loadImage } from "../../shared/utils/svgRaster";
 import jsPDF from "jspdf";
 import { svg2pdf } from "svg2pdf.js";
 import coverBg from "../assets/rtdt_cover2.jpg";
 
 const sanitizeFilename = (name) =>
   sanitizeFilenameBase(name === "HERO NAME" ? null : name, "hero");
-
-const rasterizeSvgImage = (imgEl) =>
-  new Promise((resolve, reject) => {
-    const href =
-      imgEl.getAttribute("href") ||
-      imgEl.getAttributeNS("http://www.w3.org/1999/xlink", "href");
-    if (!href || href.startsWith("data:")) {
-      resolve(null);
-      return;
-    }
-    const w = parseFloat(imgEl.getAttribute("width")) || 1213;
-    const h = parseFloat(imgEl.getAttribute("height")) || 808;
-    const scale = 3;
-    const canvas = document.createElement("canvas");
-    canvas.width = w * scale;
-    canvas.height = h * scale;
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = () => reject(new Error(`Failed to rasterize: ${href}`));
-    img.src = href;
-  });
-
-const loadImageAsDataUrl = (src) =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext("2d").drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/jpeg", 0.92));
-    };
-    img.onerror = reject;
-    img.src = src;
-  });
 
 export function useExport({ hero, showAlert, showStatus }) {
   const [downloading, setDownloading] = useState(false);
@@ -73,7 +33,9 @@ export function useExport({ hero, showAlert, showStatus }) {
         origHrefs.push(href);
         if (href && !href.startsWith("data:")) {
           try {
-            const dataUrl = await rasterizeSvgImage(imgEl);
+            const w = parseFloat(imgEl.getAttribute("width")) || 1213;
+            const h = parseFloat(imgEl.getAttribute("height")) || 808;
+            const dataUrl = await rasterizeSvgUrl(href, w, h, 3);
             if (dataUrl) imgEl.setAttribute("href", dataUrl);
           } catch (e) {
             console.warn("Could not rasterize image for PDF:", e);
@@ -96,12 +58,12 @@ export function useExport({ hero, showAlert, showStatus }) {
       // Page 2 — back side
       doc.addPage([1213, 808], "landscape");
 
-      const coverDataUrl = await loadImageAsDataUrl(coverBg);
-      const coverImg = await new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.src = coverDataUrl;
-      });
+      const coverImg = await loadImage(coverBg);
+      const coverCanvas = document.createElement("canvas");
+      coverCanvas.width = coverImg.naturalWidth;
+      coverCanvas.height = coverImg.naturalHeight;
+      coverCanvas.getContext("2d").drawImage(coverImg, 0, 0);
+      const coverDataUrl = coverCanvas.toDataURL("image/jpeg", 0.92);
       const imgRatio = coverImg.naturalWidth / coverImg.naturalHeight;
       const pageRatio = 1213 / 808;
       let drawW, drawH;
