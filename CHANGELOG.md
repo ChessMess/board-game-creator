@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Playwright End-to-End Suite** — Baseline load/render regression tests for both creators across Chromium, Firefox, and WebKit (`npm run test:e2e`). Firebase-backed flows (Gallery, Admin, share/submit) and the native File System Access API picker remain manual QA — see CLAUDE.md.
+- **TRV Copy / Paste** — Thunder Road: Vendetta crew leader creator now supports Copy (clipboard) and Paste (modal), matching the RTDT hero creator's existing feature.
+
+### Fixed
+
+- **RTDT "Preview" and "Open in New Tab" Bugs** — Two spots that hand off a hero to a new browser tab (the admin panel's Preview button, and each Recent Heroes entry's "open in new tab" icon) opened the app's landing page instead of the hero board, so the handoff data was never actually loaded. Both now correctly open `/rtdt`.
+- **Duplicate Hero Detection** — The duplicate-submission hash used to gate community gallery submissions was comparing virtue fields (`line1`/`line2`) that don't exist on the current data model, so it ignored virtue description text entirely. Two heroes with the same name/stats/virtue names but different descriptions were incorrectly treated as duplicates of each other. The hash now compares the fields that actually exist (`description`/`kingdom`). Note: this changes hash values, so a hero already sitting in the pending queue under the old hash won't match until it clears the 30-day pending-reference expiry.
+
+### Changed
+
+- **Cross-Game Code Unification** — Consolidated 55–95% duplicated logic between the RTDT and TRV creators into `src/shared/`: the Gallery modal/card, Admin panel, Firebase submit/approve/reject core, gallery-share hook, file I/O (save/load/recents/copy/paste) hook, and the IndexedDB recents store. Each app now supplies a small config object to a shared implementation instead of maintaining an independent copy. No behavior changes beyond the fixes and the new TRV Copy/Paste feature noted above.
+- **RTDT Export Rasterization** — RTDT's PDF export now uses the same decode-safe, memoized SVG rasterization TRV already used, closing a "first export after refresh is incomplete" race condition most noticeable on WebKit/Safari.
+
 ## [3.1.2] - 2026-04-10
 
 ### Changed

@@ -278,11 +278,14 @@ App.jsx (state owner + root layout)
 │  └ ResizeObserver for responsive scaling
 │
 └─ Floating controls
-   ├ File I/O buttons (Save/Load via useFileIO)
-   ├ Gallery modal (via useGallery)
-   ├ Recent heroes dropdown (via useFileIO recents management)
+   ├ File I/O buttons (Save/Load, Copy/Paste via useFileIO)
+   ├ Gallery modal (via useGallery + shared/components/GalleryModal)
+   ├ Admin panel (via shared/components/AdminPanel, admin-only)
+   ├ Recent leaders dropdown (via useFileIO recents management)
    └ PDF export button
 ```
+
+`useFileIO`, `useGallery`, `GalleryModal`, and `AdminPanel` are thin per-app config wrappers around shared implementations in `src/shared/` — see CLAUDE.md's "Shared architecture" section. The actual submit/approve/reject/save/load/recents logic lives once, shared with RTDT.
 
 ### Data Flow
 
@@ -359,7 +362,7 @@ From `src/trv/utils/boardLayout.js`:
 
 - **Storage:** IndexedDB, store: `"recents"`
 - **Per entry:** `{ id, fileName, savedAt, handle, leaderName, author_name, revision_no, slotCount }`
-- **Display:** RecentLeaderRow.jsx renders 5 most recent
+- **Display:** `shared/components/RecentRow.jsx` renders the 5 most recent (shared with RTDT; trv supplies `title`/`countLabel` props)
 - **Deduplication:** By fileName; keeps newest by savedAt timestamp
 - **Max items:** 5
 
@@ -426,5 +429,5 @@ From `src/trv/utils/boardLayout.js`:
 ---
 
 _Reference guide for Thunder Road Vendetta crew leader board creator tool._  
-_Last updated: 2026-03-18_  
+_Last updated: 2026-07-19_  
 _Based on: official game boards, SVG geometry, implementation codebase analysis._

@@ -42,6 +42,7 @@ Create custom player boards for your favorite Restoration Games titles — start
 - **Landing Page** — Split-screen game selector to choose your creator
 - **Collapsible Editor** — Form sections collapse/expand with persistent state
 - **Save / Load** — Save to JSON files with save-to-same-file support on Chrome/Edge
+- **Copy / Paste** — Copy your creation as JSON to the clipboard, or paste JSON in to load it
 - **Recent Files** — Quick access to your last 5 saved/loaded files
 - **No Backend Required** — Runs entirely in the browser as a static site (gallery uses Firebase free tier)
 

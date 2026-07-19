@@ -4,16 +4,7 @@
 
 ---
 
-## 1. `wrapText` duplicated across RTDT and TRV
-
-- `src/trv/components/CrewLeaderBoard.jsx` (lines 12–27)
-- `src/rtdt/components/HeroBoard.jsx` (lines 116–131)
-
-Identical implementations. Extract to `src/utils/textWrap.js` and import in both.
-
----
-
-## 2. AppNav link className is copy-pasted
+## 1. AppNav link className is copy-pasted
 
 `src/RouterApp.jsx` — both nav links share the exact same Tailwind className string, differing only in the active-check variable.
 
@@ -29,7 +20,7 @@ function navLinkClass(isActive) {
 
 ---
 
-## 3. Font family strings stringly-typed throughout CrewLeaderBoard
+## 2. Font family strings stringly-typed throughout CrewLeaderBoard
 
 These strings repeat in multiple style objects:
 - `"'Compacta TRV', sans-serif"` — 4 occurrences
@@ -49,8 +40,14 @@ export const FONTS = {
 
 ---
 
-## 4. Back metadata text elements are repetitive
+## 3. Back metadata text elements are repetitive
 
 `src/trv/components/CrewLeaderBoard.jsx` lines 256–341 — four separate inline `<text>` elements for version, author name, contact info, app title, all sharing `fill: '#fff6d3'` and the same null-check pattern.
 
 Consider a small `BackText` helper component similar to `TextBlock`.
+
+---
+
+## Resolved
+
+- ~~`wrapText` duplicated across RTDT and TRV~~ — extracted into `src/shared/utils/textFit.js` during the 2026-07 rtdt/trv unification refactor (see CHANGELOG.md "Cross-Game Code Unification"). Both `HeroBoard.jsx` and `CrewLeaderBoard.jsx` now import the shared implementation.
