@@ -4,10 +4,10 @@ import {
   createEmptyVirtue,
 } from "../data/defaultHero";
 import { THEME_PRESETS } from "../data/themes";
+import { createRecentsStore } from "../../shared/utils/recentsStore";
 
 const STORAGE_KEY = "rtdt-hero-v2";
 const V1_STORAGE_KEY = "rtdt-hero";
-const MAX_RECENTS = 5;
 const PENDING_KEY = "rtdt-my-pending";
 const PENDING_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -401,117 +401,19 @@ export function optimizeImage(
 
 /* ── Recent Heroes (IndexedDB + File System Access API) ── */
 
-const DB_NAME = "rtdt-hero-recents";
-const STORE_NAME = "recents";
+const recentsStore = createRecentsStore({ dbName: "rtdt-hero-recents" });
 
-function openRecentsDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+export const loadRecents = recentsStore.loadRecents;
+export const removeFromRecents = recentsStore.removeFromRecents;
+export const clearAllRecents = recentsStore.clearAllRecents;
+
+export function addToRecents(fileHandle, hero) {
+  return recentsStore.addToRecents(fileHandle, {
+    heroName: hero.name || "",
+    author_name: hero.author_name || "",
+    revision_no: hero.revision_no || "",
+    virtueCount: hero.virtues?.length || 0,
   });
-}
-
-export async function loadRecents() {
-  try {
-    const db = await openRecentsDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const entries = req.result || [];
-        entries.sort((a, b) => b.savedAt - a.savedAt);
-        resolve(entries);
-      };
-      req.onerror = () => resolve([]);
-    });
-  } catch {
-    return [];
-  }
-}
-
-export async function addToRecents(fileHandle, hero) {
-  try {
-    const db = await openRecentsDB();
-    const existing = await new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const req = tx.objectStore(STORE_NAME).getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => resolve([]);
-    });
-
-    // Deduplicate by file name
-    const dupes = existing.filter((r) => r.fileName === fileHandle.name);
-
-    const entry = {
-      id: crypto.randomUUID?.() || String(Date.now()),
-      fileName: fileHandle.name,
-      savedAt: Date.now(),
-      handle: fileHandle,
-      heroName: hero.name || "",
-      author_name: hero.author_name || "",
-      revision_no: hero.revision_no || "",
-      virtueCount: hero.virtues?.length || 0,
-    };
-
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    for (const d of dupes) store.delete(d.id);
-    store.put(entry);
-
-    // Trim to MAX_RECENTS (keep newest)
-    const remaining = existing
-      .filter((r) => r.fileName !== fileHandle.name)
-      .sort((a, b) => b.savedAt - a.savedAt);
-    const toRemove = remaining.slice(MAX_RECENTS - 1);
-    for (const r of toRemove) store.delete(r.id);
-
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-
-    return loadRecents();
-  } catch {
-    return loadRecents();
-  }
-}
-
-export async function removeFromRecents(id) {
-  try {
-    const db = await openRecentsDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete(id);
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch {
-    /* ignore */
-  }
-  return loadRecents();
-}
-
-export async function clearAllRecents() {
-  try {
-    const db = await openRecentsDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).clear();
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch {
-    /* ignore */
-  }
-  return [];
 }
 
 export async function loadHeroFromHandle(fileHandle) {

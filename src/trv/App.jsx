@@ -59,8 +59,10 @@ export default function TrvApp() {
   const [downloading, setDownloading] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
   const [zoom, setZoom] = useState(1);
   const boardAreaRef = useRef(null);
+  const pasteTextareaRef = useRef(null);
   const [boardSize, setBoardSize] = useState({ width: 0, height: 0 });
 
   const BOARD_W = 1027.3709;
@@ -84,6 +86,8 @@ export default function TrvApp() {
     recents,
     handleSaveJson,
     handleLoadJson,
+    handleCopyToClipboard,
+    handlePasteSubmit,
     handleLoadRecent,
     handleRemoveRecent,
     handleOpenRecentInNewWindow,
@@ -260,6 +264,22 @@ export default function TrvApp() {
               Load
             </button>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleCopyToClipboard}
+              className="rounded bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs py-1.5 uppercase tracking-wider transition-colors"
+            >
+              Copy
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPasteModal(true)}
+              className="rounded bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs py-1.5 uppercase tracking-wider transition-colors"
+            >
+              Paste
+            </button>
+          </div>
           {recents.length > 0 && (
             <RecentsList label="Recent Leaders" onClearAll={handleClearRecents}>
               {recents.map((entry) => (
@@ -387,6 +407,44 @@ export default function TrvApp() {
 
       {showAdmin && (
         <AdminPanel onClose={() => setShowAdmin(false)} confirm={confirm} />
+      )}
+
+      {showPasteModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 w-96 space-y-3">
+            <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider">
+              Paste Crew Leader JSON
+            </h2>
+            <textarea
+              ref={pasteTextareaRef}
+              rows={10}
+              placeholder="Paste crew leader JSON here..."
+              autoFocus
+              className="w-full rounded bg-gray-700 border border-gray-600 px-3 py-2 text-xs text-gray-100 font-mono focus:outline-none focus:border-amber-500 resize-none"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowPasteModal(false)}
+                className="rounded bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs px-4 py-1.5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await handlePasteSubmit(
+                    pasteTextareaRef.current.value,
+                  );
+                  if (ok) setShowPasteModal(false);
+                }}
+                className="rounded bg-amber-700 hover:bg-amber-600 text-white text-xs px-4 py-1.5 font-bold transition-colors"
+              >
+                Load
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmState && (

@@ -59,6 +59,7 @@ export default function V2App() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [cardSize, setCardSize] = useState({ width: 0, height: 0 });
   const cardAreaRef = useRef(null);
+  const pasteTextareaRef = useRef(null);
 
   const showStatus = (text, type = "success") => {
     setStatusMsg({ text, type });
@@ -428,7 +429,7 @@ export default function V2App() {
               Paste Hero JSON
             </h2>
             <textarea
-              id="paste-textarea-v2"
+              ref={pasteTextareaRef}
               rows={10}
               placeholder="Paste hero JSON here..."
               autoFocus
@@ -446,7 +447,7 @@ export default function V2App() {
                 type="button"
                 onClick={async () => {
                   const ok = await handlePasteSubmit(
-                    document.getElementById("paste-textarea-v2").value,
+                    pasteTextareaRef.current.value,
                   );
                   if (ok) setShowPasteModal(false);
                 }}

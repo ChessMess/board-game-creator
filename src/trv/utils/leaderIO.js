@@ -1,10 +1,8 @@
 import { defaultCrewLeader } from "../data/defaultCrewLeader";
 import { FIELD_IDS } from "./fieldRegistry";
+import { createRecentsStore } from "../../shared/utils/recentsStore";
 
 const STORAGE_KEY = "trv-crew-leader-v2";
-const DB_NAME = "trv-leader-recents";
-const STORE_NAME = "recents";
-const MAX_RECENTS = 5;
 
 /* ── localStorage persistence ── */
 
@@ -200,114 +198,19 @@ export function clearPendingRef() {
 
 /* ── Recent Leaders (IndexedDB + File System Access API) ── */
 
-function openRecentsDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+const recentsStore = createRecentsStore({ dbName: "trv-leader-recents" });
+
+export const loadRecents = recentsStore.loadRecents;
+export const removeFromRecents = recentsStore.removeFromRecents;
+export const clearAllRecents = recentsStore.clearAllRecents;
+
+export function addToRecents(fileHandle, leader) {
+  return recentsStore.addToRecents(fileHandle, {
+    leaderName: leader.crewLeaderName || "",
+    author_name: leader.author_name || "",
+    revision_no: leader.revision_no || "",
+    slotCount: leader.slots?.length || 0,
   });
-}
-
-export async function loadRecents() {
-  try {
-    const db = await openRecentsDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const entries = req.result || [];
-        entries.sort((a, b) => b.savedAt - a.savedAt);
-        resolve(entries);
-      };
-      req.onerror = () => resolve([]);
-    });
-  } catch {
-    return [];
-  }
-}
-
-export async function addToRecents(fileHandle, leader) {
-  try {
-    const db = await openRecentsDB();
-    const existing = await new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const req = tx.objectStore(STORE_NAME).getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => resolve([]);
-    });
-
-    // Deduplicate by file name
-    const dupes = existing.filter((r) => r.fileName === fileHandle.name);
-
-    const entry = {
-      id: crypto.randomUUID?.() || String(Date.now()),
-      fileName: fileHandle.name,
-      savedAt: Date.now(),
-      handle: fileHandle,
-      leaderName: leader.crewLeaderName || "",
-      author_name: leader.author_name || "",
-      revision_no: leader.revision_no || "",
-      slotCount: leader.slots?.length || 0,
-    };
-
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    for (const d of dupes) store.delete(d.id);
-    store.put(entry);
-
-    // Trim to MAX_RECENTS (keep newest)
-    const remaining = existing
-      .filter((r) => r.fileName !== fileHandle.name)
-      .sort((a, b) => b.savedAt - a.savedAt);
-    const toRemove = remaining.slice(MAX_RECENTS - 1);
-    for (const r of toRemove) store.delete(r.id);
-
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-
-    return loadRecents();
-  } catch {
-    return loadRecents();
-  }
-}
-
-export async function removeFromRecents(id) {
-  try {
-    const db = await openRecentsDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete(id);
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch {
-    /* ignore */
-  }
-  return loadRecents();
-}
-
-export async function clearAllRecents() {
-  try {
-    const db = await openRecentsDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).clear();
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch {
-    /* ignore */
-  }
-  return [];
 }
 
 export async function loadLeaderFromHandle(fileHandle) {
