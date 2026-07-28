@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **Playwright End-to-End Suite** — Baseline load/render regression tests for both creators across Chromium, Firefox, and WebKit (`npm run test:e2e`). Firebase-backed flows (Gallery, Admin, share/submit) and the native File System Access API picker remain manual QA — see CLAUDE.md.
 - **TRV Copy / Paste** — Thunder Road: Vendetta crew leader creator now supports Copy (clipboard) and Paste (modal), matching the RTDT hero creator's existing feature.
+- **TRV Text Shadow** — Crew leader board text now renders with a drop shadow by default (all 17 editable fields), replacing flat solid-fill lettering. Each field's existing style strip (color/bold/italic/size) gained a shadow on/off toggle plus independent shadow color, blur size, and offset controls, so the look can be tuned or disabled per field the same way the other manual overrides work.
 
 ### Fixed
 

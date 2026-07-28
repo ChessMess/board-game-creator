@@ -88,28 +88,66 @@ function fitField(field, value, style, override) {
   });
 }
 
+// Renders one text block (shadow copy or real text) for a set of pre-wrapped lines.
+function TextLines({ x, y, textAnchor, lineHeight, lines, style, fill, dx = 0, dy = 0, filter }) {
+  return (
+    <text
+      x={x + dx}
+      y={y + dy}
+      textAnchor={textAnchor}
+      filter={filter}
+      style={{ ...style, fill }}
+    >
+      {lines.map((line, i) => (
+        <tspan key={i} x={x + dx} dy={i === 0 ? 0 : lineHeight}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
+
 // A registry-driven text field with measured auto-fit. anchorV "bottom" keeps
 // the last line's baseline at the anchor and grows earlier lines upward.
 function FieldText({ field, value, style, override }) {
   const { x, y, textAnchor } = field.anchor;
-  const { fill, fontFamily, fontWeight, fontStyle, letterSpacing } = style;
+  const { fill, fontFamily, fontWeight, fontStyle, letterSpacing, shadowOn, shadowColor, shadowSize, shadowOffset } = style;
   const { lines, fontSize, lineHeight } = fitField(field, value, style, override);
   const yOffset =
     field.anchorV === "bottom" ? -(lines.length - 1) * lineHeight : 0;
+  const textStyle = { fontFamily, fontWeight, fontStyle, fontSize, letterSpacing };
+  const shadowFilterId = `shadow-${field.id}`;
   return (
     <g data-field-id={field.id} transform={fieldGroupTransform(field, style)}>
-      <text
+      {shadowOn && (
+        <>
+          {/* feGaussianBlur/filter are never-rendered elements — no <defs> needed */}
+          <filter id={shadowFilterId} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation={shadowSize * 0.5} />
+          </filter>
+          <TextLines
+            x={x}
+            y={y + yOffset}
+            textAnchor={textAnchor}
+            lineHeight={lineHeight}
+            lines={lines}
+            style={textStyle}
+            fill={shadowColor}
+            dx={shadowOffset}
+            dy={shadowOffset * 1.4}
+            filter={`url(#${shadowFilterId})`}
+          />
+        </>
+      )}
+      <TextLines
         x={x}
         y={y + yOffset}
         textAnchor={textAnchor}
-        style={{ fontFamily, fontWeight, fontStyle, fontSize, fill, letterSpacing }}
-      >
-        {lines.map((line, i) => (
-          <tspan key={i} x={x} dy={i === 0 ? 0 : lineHeight}>
-            {line}
-          </tspan>
-        ))}
-      </text>
+        lineHeight={lineHeight}
+        lines={lines}
+        style={textStyle}
+        fill={fill}
+      />
     </g>
   );
 }
@@ -117,7 +155,7 @@ function FieldText({ field, value, style, override }) {
 // Dice value — a filled star polygon for command tokens, otherwise shrink-to-fit text.
 function DiceField({ field, value, style, override }) {
   const { x, y } = field.anchor;
-  const { fill, fontFamily, fontWeight, fontStyle } = style;
+  const { fill, fontFamily, fontWeight, fontStyle, shadowOn, shadowColor, shadowSize, shadowOffset } = style;
   if (value === "★") {
     return (
       <g data-field-id={field.id} transform={fieldGroupTransform(field, style)}>
@@ -130,14 +168,27 @@ function DiceField({ field, value, style, override }) {
     );
   }
   const { fontSize } = fitField(field, value, style, override);
+  const textStyle = { fontFamily, fontWeight, fontStyle, fontSize };
+  const shadowFilterId = `shadow-${field.id}`;
   return (
     <g data-field-id={field.id} transform={fieldGroupTransform(field, style)}>
-      <text
-        x={x}
-        y={y}
-        textAnchor="middle"
-        style={{ fontFamily, fontWeight, fontStyle, fontSize, fill }}
-      >
+      {shadowOn && (
+        <>
+          <filter id={shadowFilterId} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation={shadowSize * 0.5} />
+          </filter>
+          <text
+            x={x + shadowOffset}
+            y={y + shadowOffset * 1.4}
+            textAnchor="middle"
+            filter={`url(#${shadowFilterId})`}
+            style={{ ...textStyle, fill: shadowColor }}
+          >
+            {value}
+          </text>
+        </>
+      )}
+      <text x={x} y={y} textAnchor="middle" style={{ ...textStyle, fill }}>
         {value}
       </text>
     </g>

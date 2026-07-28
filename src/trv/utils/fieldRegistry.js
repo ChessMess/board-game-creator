@@ -248,5 +248,9 @@ export function resolveFieldStyle(field, override = {}, { accent, name } = {}) {
     dx: override.dx || 0,
     dy: override.dy || 0,
     rotation: override.rotation || 0,
+    shadowOn: override.shadow ?? true,
+    shadowColor: override.shadowColor ?? "#000000",
+    shadowSize: override.shadowSize ?? 1,
+    shadowOffset: override.shadowOffset ?? 1,
   };
 }

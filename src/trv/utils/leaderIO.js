@@ -81,6 +81,12 @@ export function sanitizeFieldStyles(raw) {
     if (typeof s.color === "string" && HEX_RE.test(s.color)) clean.color = s.color;
     if (typeof s.italic === "boolean") clean.italic = s.italic;
     if (typeof s.bold === "boolean") clean.bold = s.bold;
+    if (typeof s.shadow === "boolean") clean.shadow = s.shadow;
+    if (typeof s.shadowColor === "string" && HEX_RE.test(s.shadowColor)) clean.shadowColor = s.shadowColor;
+    const shadowSize = clampNum(s.shadowSize, 0, 5);
+    if (shadowSize !== undefined) clean.shadowSize = shadowSize;
+    const shadowOffset = clampNum(s.shadowOffset, 0, 10);
+    if (shadowOffset !== undefined) clean.shadowOffset = shadowOffset;
     if (Object.keys(clean).length > 0) out[id] = clean;
   }
   return out;

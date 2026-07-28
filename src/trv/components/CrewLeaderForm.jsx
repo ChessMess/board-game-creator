@@ -66,6 +66,10 @@ function FieldStyleStrip({ fieldId, override = {}, accent, nameColor, onChange, 
   const effSize = Math.round(override.fontSize ?? field.font.size);
   const effItalic = override.italic ?? field.font.style === "italic";
   const effBold = override.bold ?? field.font.weight >= 700;
+  const effShadow = override.shadow ?? true;
+  const effShadowColor = override.shadowColor ?? "#000000";
+  const effShadowSize = override.shadowSize ?? 1;
+  const effShadowOffset = override.shadowOffset ?? 1;
   const hasOverride = Object.keys(override).length > 0;
   const tgl = (active) =>
     "h-6 w-6 shrink-0 rounded border text-xs leading-none transition-colors " +
@@ -73,7 +77,7 @@ function FieldStyleStrip({ fieldId, override = {}, accent, nameColor, onChange, 
       ? "bg-amber-600 border-amber-500 text-white"
       : "bg-gray-700 border-gray-600 text-gray-400 hover:text-amber-400");
   return (
-    <div className="mt-1 flex items-center gap-1.5">
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
       <input
         type="color"
         value={effColor}
@@ -112,6 +116,52 @@ function FieldStyleStrip({ fieldId, override = {}, accent, nameColor, onChange, 
         className="h-6 w-14 rounded bg-gray-700 border border-gray-600 px-1 text-gray-100 text-xs focus:outline-none focus:border-amber-500"
       />
       <span className="text-[10px] text-gray-500">px</span>
+      <button
+        type="button"
+        aria-pressed={effShadow}
+        title="Shadow"
+        onClick={() => onChange(fieldId, { shadow: !effShadow })}
+        className={tgl(effShadow)}
+      >
+        S
+      </button>
+      {effShadow && (
+        <span className="inline-flex shrink-0 items-center gap-1.5">
+          <input
+            type="color"
+            value={effShadowColor}
+            onChange={(e) => onChange(fieldId, { shadowColor: e.target.value })}
+            title="Shadow color"
+            className="h-6 w-6 shrink-0 rounded border border-gray-600 bg-gray-700 cursor-pointer p-0"
+          />
+          <input
+            type="number"
+            min={0}
+            max={5}
+            step={0.5}
+            value={effShadowSize}
+            title="Shadow size (blur)"
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              onChange(fieldId, { shadowSize: Number.isFinite(v) ? v : undefined });
+            }}
+            className="h-6 w-12 rounded bg-gray-700 border border-gray-600 px-1 text-gray-100 text-xs focus:outline-none focus:border-amber-500"
+          />
+          <input
+            type="number"
+            min={0}
+            max={10}
+            step={0.5}
+            value={effShadowOffset}
+            title="Shadow offset (distance)"
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              onChange(fieldId, { shadowOffset: Number.isFinite(v) ? v : undefined });
+            }}
+            className="h-6 w-12 rounded bg-gray-700 border border-gray-600 px-1 text-gray-100 text-xs focus:outline-none focus:border-amber-500"
+          />
+        </span>
+      )}
       {hasOverride && (
         <button
           type="button"
